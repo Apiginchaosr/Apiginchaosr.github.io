@@ -8,6 +8,7 @@
 | --- | --- |
 | `index.html` | 首页：身份信息、学习轨迹 |
 | `deep-learning/01-mlp.html` | 第 01 章：用 MLP 识别手写数字，含 7 个可交互小节 |
+| `deep-learning/02-gradient-descent.html` | 第 02 章：梯度下降，含 8 个可交互小节 |
 
 ## 技术
 
