@@ -121,12 +121,43 @@
     transition:border-color .2s,box-shadow .2s,background .2s;
   }
   .src:hover{border-color:#C7CDFB;background:#FDFDFF;box-shadow:0 6px 16px -8px rgba(79,70,229,.4)}
+  .src .src-a:hover{text-decoration:underline;text-underline-offset:2px}
   .src .src-k{
     font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);
     background:var(--indigo-soft);padding:3px 8px;border-radius:100px;font-weight:600;
   }
   .src .src-t b{color:var(--ink);font-weight:600}
-  .src .src-a{color:var(--indigo);font-weight:500;white-space:nowrap}
+  .src .src-a{color:var(--indigo);font-weight:500;white-space:nowrap;text-decoration:none}
+  .src .src-a + .src-a{padding-left:10px;border-left:1px solid var(--line);line-height:1.1}
+  .src .src-links{display:inline-flex;align-items:center;gap:0;white-space:nowrap}
+
+
+  /* 感受野演示 */
+  .rf-wrap{
+    display:grid;grid-template-columns:auto auto minmax(0,1fr);
+    gap:clamp(14px,2.6vw,28px);align-items:center;justify-items:center;justify-content:space-between;
+  }
+  .rf-col{display:grid;gap:8px;justify-items:center}
+  .rf-col canvas{
+    display:block;border-radius:8px;box-shadow:0 0 0 1px var(--line);
+    cursor:crosshair;touch-action:none;
+  }
+  .rf-cap{font-size:10.5px;color:var(--muted);text-align:center;letter-spacing:.02em}
+  .rf-out{display:grid;gap:1px;align-content:center;width:100%;max-width:220px}
+  .rf-out .lbl{font-size:10px;color:var(--muted);margin-top:9px;letter-spacing:.02em}
+  .rf-out .big{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--ink);line-height:1.25}
+  .rf-thr{margin-top:14px;display:grid;gap:6px}
+  .rf-thr span{font-size:10.5px;color:var(--muted)}
+  .rf-thr b{color:var(--indigo);font-family:var(--mono);font-weight:600}
+  @media (max-width:860px){
+    .rf-wrap{grid-template-columns:auto auto;justify-content:center;gap:14px}
+    .rf-col canvas{max-width:40vw;height:auto}
+    .rf-out{
+      grid-column:1/-1;grid-template-columns:auto auto;justify-content:center;
+      gap:1px 18px;max-width:none;margin-top:5px;
+    }
+    .rf-thr{grid-column:1/-1;margin-top:10px}
+  }
 
   /* 章节 */
   section{scroll-margin-top:84px;padding:clamp(34px,5vw,52px) 0;border-top:1px solid var(--line)}
@@ -355,11 +386,12 @@
     <div class="toc-h">Contents</div>
     <a href="#s1" class="on">01 数字是什么</a>
     <a href="#s2">02 一个神经元</a>
-    <a href="#s3">03 非线性</a>
-    <a href="#s4">04 堆成网络</a>
-    <a href="#s5">05 Softmax</a>
-    <a href="#s6">06 训练</a>
-    <a href="#s7">07 小结</a>
+    <a href="#s3">03 感受野</a>
+    <a href="#s4">04 非线性</a>
+    <a href="#s5">05 堆成网络</a>
+    <a href="#s6">06 Softmax</a>
+    <a href="#s7">07 训练</a>
+    <a href="#s8">08 小结</a>
   </aside>
 
   <main>
@@ -369,7 +401,7 @@
       <h1>让网络认出<br>一个手写<em>数字</em></h1>
       <p class="abstract">
         这一章只做一件事：把一个 28×28 的像素矩阵，一步步变成「是 7 的概率为 96%」。
-        中间每一步都能看见 —— 逐像素扫描、加权求和、非线性、层间传递、softmax、反向传播。
+        中间每一步都能看见 —— 逐像素扫描、加权求和、一个神经元到底在看哪块地方、非线性、层间传递、softmax、反向传播。
       </p>
       <div class="meta-row">
         <span class="tag">MLP</span>
@@ -378,11 +410,11 @@
         <span class="tag">Backprop</span>
       </div>
 
-      <a class="src" href="https://www.3blue1brown.com/lessons/neural-networks" target="_blank" rel="noopener">
+      <div class="src">
         <span class="src-k">参考</span>
         <span class="src-t">3Blue1Brown《深度学习》第 1 集 · <b>但什么是神经网络？</b></span>
-        <span class="src-a">看原片 ↗</span>
-      </a>
+        <span class="src-links"><a class="src-a" href="https://www.bilibili.com/video/BV1bx411M7Zx/" target="_blank" rel="noopener">B 站 ↗</a><a class="src-a" href="https://www.3blue1brown.com/lessons/neural-networks" target="_blank" rel="noopener">原片 ↗</a></span>
+      </div>
       
     </div>
 
@@ -480,9 +512,86 @@
       </p>
     </section>
 
-    <!-- ============ 03 非线性 ============ -->
+    <!-- ============ 03 感受野 ============ -->
     <section id="s3">
-      <div class="s-head"><span class="s-idx">03</span><h2>为什么必须有非线性</h2></div>
+      <div class="s-head"><span class="s-idx">03</span><h2>一个神经元只看一小块地方</h2></div>
+
+      <p>
+        上一节那四个权重能排成一列，也能排成一张<b>小图</b>：每个位置配一个权重，
+        <span style="color:#D97706;font-weight:600">黄色是正</span>、<span style="color:#3B82F6;font-weight:600">蓝色是负</span>。
+        一旦把它画出来，你立刻就知道这个神经元在找什么 —— 这是 3Blue1Brown 讲第一层时最有用的一个画面。
+      </p>
+
+      <p>
+        而且它<b>不需要看整张图</b>。真实网络里，一个神经元只连到输入的一小块区域，叫
+        <b>感受野</b>（receptive field）。这块区域里的权重就够它回答一个问题：<b>这里有没有一条边？</b>
+        下面这个窗口可以拖动：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Receptive field · 12 × 12</span>
+          <div class="ctrl-row">
+            <button class="btn sm on" data-k="v">竖向边缘</button>
+            <button class="btn sm" data-k="h">横向边缘</button>
+            <button class="btn sm" data-k="d">斜向边缘</button>
+            <button class="btn sm" data-k="b">中心亮点</button>
+          </div>
+        </div>
+        <div class="panel-b">
+          <div class="rf-wrap">
+            <div class="rf-col">
+              <canvas id="rfIn"></canvas>
+              <div class="rf-cap">输入 28×28 · 拖动窗口</div>
+            </div>
+            <div class="rf-col">
+              <canvas id="rfW"></canvas>
+              <div class="rf-cap">这个神经元的权重 · 12×12</div>
+            </div>
+            <div class="rf-out">
+              <div class="lbl">窗口内加权和 Σ wᵢxᵢ</div>
+              <div class="big" id="rfSum">0.00</div>
+              <div class="lbl">减去阈值 θ</div>
+              <div class="big" id="rfZ">0.00</div>
+              <div class="lbl">激活 a = ReLU(z)</div>
+              <div class="big" id="rfA">0.00</div>
+              <div class="rf-thr">
+                <span>阈值 θ = <b id="rfBv">1.20</b></span>
+                <input type="range" id="rfB" min="0" max="200" value="120" aria-label="阈值" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        把窗口挪到笔画上，和值明显变大；挪到空白处，正负权重互相抵消，掉到接近 0。
+        换一个滤波器，同一个位置的读数会完全不一样 —— <b>每个神经元只对特定方向、特定形状敏感</b>。
+      </p>
+
+      <p>
+        <b>阈值这一步很关键。</b>没有它，任何一点灰度都会让神经元「有点亮」，噪声被一路放大；
+        有了它，神经元只在<b>足够像</b>的时候才发言。你刚才拖的那个 θ，在网络的标准写法里就是偏置：
+        把 <code>z = Σwᵢxᵢ + b</code> 里的 <code>b</code> 取成 <code>−θ</code>，两句话是同一件事。
+      </p>
+
+      <p>
+        所以第一层的一百多个神经元，做的是同一件事，只是权重长得不一样：有的盯竖边，有的盯横边，有的盯一个亮点。
+        到了第二层，它们的输出再被组合起来，开始认<b>拐角、弧线、小环</b>；到输出层，这些零件拼成「这是 3」。
+      </p>
+
+      <div class="formula">
+        <span class="v">784</span><span class="op">×</span><span class="v">16</span>
+        <span class="op">+</span><span class="v">16</span><span class="op">×</span><span class="v">16</span>
+        <span class="op">+</span><span class="v">16</span><span class="op">×</span><span class="v">10</span>
+        <span class="op">=</span><span class="v">12 960</span>
+        <span class="note">再算上 42 个偏置，一共 13 002 个数 —— 这是 3Blue1Brown 那个 784–16–16–10 的例子。本站演示用的 784–128–64–10 更大，是 109 386 个。手调不现实，所以需要梯度下降。</span>
+      </div>
+    </section>
+
+    <!-- ============ 04 非线性 ============ -->
+    <section id="s4">
+      <div class="s-head"><span class="s-idx">04</span><h2>为什么必须有非线性</h2></div>
 
       <p>
         假设没有激活函数，两层网络是这样叠加的：
@@ -522,9 +631,9 @@
       </p>
     </section>
 
-    <!-- ============ 04 堆成网络 ============ -->
-    <section id="s4">
-      <div class="s-head"><span class="s-idx">04</span><h2>把它们堆起来：784 → 128 → 64 → 10</h2></div>
+    <!-- ============ 05 堆成网络 ============ -->
+    <section id="s5">
+      <div class="s-head"><span class="s-idx">05</span><h2>把它们堆起来：784 → 128 → 64 → 10</h2></div>
 
       <p>
         单个神经元只能画一条线，堆成层之后就能组合出任意复杂的形状。这里的结构是一个典型的
@@ -578,9 +687,9 @@
       </div>
     </section>
 
-    <!-- ============ 05 softmax ============ -->
-    <section id="s5">
-      <div class="s-head"><span class="s-idx">05</span><h2>Softmax：把打分变成概率</h2></div>
+    <!-- ============ 06 softmax ============ -->
+    <section id="s6">
+      <div class="s-head"><span class="s-idx">06</span><h2>Softmax：把打分变成概率</h2></div>
 
       <p>
         输出层的 10 个 logit 可以是任意实数，比如 <code>[-3.2, 1.1, 8.7, …]</code>。
@@ -619,9 +728,9 @@
       </p>
     </section>
 
-    <!-- ============ 06 训练 ============ -->
-    <section id="s6">
-      <div class="s-head"><span class="s-idx">06</span><h2>它怎么学会的：损失与反向传播</h2></div>
+    <!-- ============ 07 训练 ============ -->
+    <section id="s7">
+      <div class="s-head"><span class="s-idx">07</span><h2>它怎么学会的：损失与反向传播</h2></div>
 
       <p>
         上面的权重是给定的。真实训练里，权重一开始是随机的，网络输出一团糟。要让它变好，
@@ -681,9 +790,9 @@
       </div>
     </section>
 
-    <!-- ============ 07 小结 ============ -->
-    <section id="s7">
-      <div class="s-head"><span class="s-idx">07</span><h2>全景回顾</h2></div>
+    <!-- ============ 08 小结 ============ -->
+    <section id="s8">
+      <div class="s-head"><span class="s-idx">08</span><h2>全景回顾</h2></div>
 
       <p>把整条链路串起来，一次识别就是这么走完的：</p>
 
@@ -1828,5 +1937,249 @@ const NET = (function(){
   setTimeout(measure, 800);
 })();
 </script>
+<script>
+/* ============================================================
+   03 · 感受野：一个神经元只看一小块
+   ============================================================ */
+(function(){
+  const cvIn = document.getElementById('rfIn');
+  const cvW  = document.getElementById('rfW');
+  if(!cvIn || !cvW) return;
+
+  const N = 28, K = 12, CELL = 8, KC = 14;
+  const SIn = N*CELL, SK = K*KC;
+  const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+
+  function prep(cv, w, h){
+    cv.style.width = w+'px'; cv.style.height = h+'px';
+    cv.width = Math.round(w*DPR); cv.height = Math.round(h*DPR);
+    const g = cv.getContext('2d');
+    g.setTransform(DPR,0,0,DPR,0,0);
+    return g;
+  }
+  const gIn = prep(cvIn, SIn, SIn);
+  const gW  = prep(cvW, SK, SK);
+
+  /* ---------- 造一张 28×28 的手写 3 ---------- */
+  function makeDigit(ch){
+    const HW = 320;
+    const c = document.createElement('canvas'); c.width = c.height = HW;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0,0,HW,HW);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '700 250px "Segoe UI", Arial, sans-serif';
+    g.fillText(ch, HW/2, HW/2 + 6);
+    const d = g.getImageData(0,0,HW,HW).data;
+
+    let x0 = HW, y0 = HW, x1 = -1, y1 = -1;
+    for(let y=0;y<HW;y++) for(let x=0;x<HW;x++){
+      if(d[(y*HW+x)*4] > 40){
+        if(x<x0) x0=x; if(x>x1) x1=x;
+        if(y<y0) y0=y; if(y>y1) y1=y;
+      }
+    }
+    if(x1 < 0) return new Float32Array(N*N);
+
+    const w = x1-x0+1, h = y1-y0+1, s = Math.max(w,h);
+    const ox = x0 - (s-w)/2, oy = y0 - (s-h)/2;
+    const side = 20, pad = (N-side)/2;
+    const out = new Float32Array(N*N);
+    for(let ty=0;ty<side;ty++) for(let tx=0;tx<side;tx++){
+      const sx0 = ox + tx/side*s, sy0 = oy + ty/side*s;
+      const sx1 = ox + (tx+1)/side*s, sy1 = oy + (ty+1)/side*s;
+      let sum = 0, cnt = 0;
+      for(let yy = Math.floor(sy0); yy < Math.ceil(sy1); yy++){
+        for(let xx = Math.floor(sx0); xx < Math.ceil(sx1); xx++){
+          if(xx < 0 || yy < 0 || xx >= HW || yy >= HW) continue;
+          sum += d[(yy*HW+xx)*4]/255; cnt++;
+        }
+      }
+      out[(ty+pad)*N + (tx+pad)] = cnt ? sum/cnt : 0;
+    }
+    return out;
+  }
+
+  const PIX = makeDigit('3');
+
+  /* ---------- 四种滤波器 ---------- */
+  function build(kind){
+    const w = new Float32Array(K*K);
+    const c = (K-1)/2, sig = K/5.4;
+    for(let y=0;y<K;y++) for(let x=0;x<K;x++){
+      const dx = x-c, dy = y-c;
+      const g1 = Math.exp(-(dx*dx+dy*dy)/(2*sig*sig));
+      let v;
+      if(kind === 'v')      v = -(dx/(sig*2)) * g1;
+      else if(kind === 'h') v = -(dy/(sig*2)) * g1;
+      else if(kind === 'd'){
+        const t = (dx+dy)/Math.SQRT2;
+        v = -(t/(sig*2)) * g1;
+      } else {
+        const r2 = dx*dx + dy*dy;
+        v = Math.exp(-r2/(2*(sig*0.6)*(sig*0.6))) - 0.78*Math.exp(-r2/(2*sig*sig));
+      }
+      w[y*K+x] = v;
+    }
+    let m = 0;
+    for(let i=0;i<w.length;i++) m = Math.max(m, Math.abs(w[i]));
+    for(let i=0;i<w.length;i++) w[i] /= (m || 1);
+    return w;
+  }
+
+  const KERNELS = {
+    v: { w: build('v'), label: '竖向边缘' },
+    h: { w: build('h'), label: '横向边缘' },
+    d: { w: build('d'), label: '斜向边缘' },
+    b: { w: build('b'), label: '中心亮点' }
+  };
+
+  let kind = 'v';
+  let ox = 4, oy = 4;          // 窗口左上角在 28×28 里的位置
+  let theta = 1.2;
+
+  const kernels = KERNELS;
+  function cur(){ return kernels[kind].w; }
+  function norm(){                // 正权重之和，用来把点积归一到 0–2
+    const w = cur(); let s = 0;
+    for(let i=0;i<w.length;i++) if(w[i] > 0) s += w[i];
+    return s || 1;
+  }
+
+  /* ---------- 载入时把窗口放到响应最强的位置 ---------- */
+  function bestPos(){
+    const w = cur(), nm = norm();
+    let bx = 4, by = 4, bv = -1e9;
+    for(let y=0; y<=N-K; y++){
+      for(let x=0; x<=N-K; x++){
+        let d = 0;
+        for(let ky=0; ky<K; ky++)
+          for(let kx=0; kx<K; kx++)
+            d += w[ky*K+kx] * PIX[(y+ky)*N + (x+kx)];
+        if(d > bv){ bv = d; bx = x; by = y; }
+      }
+    }
+    ox = bx; oy = by;
+  }
+  bestPos();
+
+  /* ---------- 画输入 ---------- */
+  function drawInput(){
+    gIn.fillStyle = '#fff'; gIn.fillRect(0,0,SIn,SIn);
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+      const v = PIX[y*N+x];
+      gIn.fillStyle = 'rgb(' +
+        Math.round(255 - v*225) + ',' +
+        Math.round(255 - v*214) + ',' +
+        Math.round(255 - v*198) + ')';
+      gIn.fillRect(x*CELL, y*CELL, CELL, CELL);
+    }
+    // 窗口外的部分压暗
+    gIn.fillStyle = 'rgba(255,255,255,.62)';
+    gIn.fillRect(0, 0, SIn, oy*CELL);
+    gIn.fillRect(0, (oy+K)*CELL, SIn, SIn - (oy+K)*CELL);
+    gIn.fillRect(0, oy*CELL, ox*CELL, K*CELL);
+    gIn.fillRect((ox+K)*CELL, oy*CELL, SIn - (ox+K)*CELL, K*CELL);
+
+    gIn.strokeStyle = '#4F46E5';
+    gIn.lineWidth = 2;
+    gIn.strokeRect(ox*CELL + 1, oy*CELL + 1, K*CELL - 2, K*CELL - 2);
+    // 四个角点，强调这是"一块区域"
+    gIn.fillStyle = '#4F46E5';
+    const c = 3;
+    [[ox*CELL, oy*CELL],[(ox+K)*CELL-c, oy*CELL],[ox*CELL, (oy+K)*CELL-c],[(ox+K)*CELL-c,(oy+K)*CELL-c]]
+      .forEach(p => gIn.fillRect(p[0], p[1], c, c));
+  }
+
+  /* ---------- 画权重图 ---------- */
+  function colorOf(v){
+    const t = Math.pow(Math.min(1, Math.abs(v)), 0.72);
+    const zero = [248,250,252];
+    const pos  = [245,158,11];
+    const neg  = [59,130,246];
+    const to = v >= 0 ? pos : neg;
+    return 'rgb(' + Math.round(zero[0] + (to[0]-zero[0])*t) + ',' +
+                    Math.round(zero[1] + (to[1]-zero[1])*t) + ',' +
+                    Math.round(zero[2] + (to[2]-zero[2])*t) + ')';
+  }
+  function drawKernel(){
+    const w = cur();
+    gW.fillStyle = '#fff'; gW.fillRect(0,0,SK,SK);
+    for(let y=0;y<K;y++) for(let x=0;x<K;x++){
+      gW.fillStyle = colorOf(w[y*K+x]);
+      gW.fillRect(x*KC, y*KC, KC, KC);
+    }
+    gW.strokeStyle = 'rgba(208,213,221,.55)';
+    gW.lineWidth = 1;
+    gW.strokeRect(0.5, 0.5, SK-1, SK-1);
+  }
+
+  /* ---------- 读数 ---------- */
+  const elSum = document.getElementById('rfSum');
+  const elZ   = document.getElementById('rfZ');
+  const elA   = document.getElementById('rfA');
+  const elBv  = document.getElementById('rfBv');
+
+  function update(){
+    const w = cur(), nm = norm();
+    let dot = 0;
+    for(let y=0;y<K;y++) for(let x=0;x<K;x++){
+      const px = PIX[(oy+y)*N + (ox+x)];
+      dot += w[y*K+x] * (px || 0);
+    }
+    const sum = dot / nm * 2;
+    const z = sum - theta;
+    const a = Math.max(0, z);
+    elSum.textContent = sum.toFixed(2);
+    elZ.textContent = (z >= 0 ? '+' : '') + z.toFixed(2);
+    elZ.style.color = z >= 0 ? 'var(--indigo)' : 'var(--muted)';
+    elA.textContent = a.toFixed(2);
+    elA.style.color = a > 0.02 ? 'var(--indigo)' : 'var(--muted)';
+    elBv.textContent = theta.toFixed(2);
+  }
+
+  function render(){ drawInput(); drawKernel(); update(); }
+
+  /* ---------- 交互 ---------- */
+  document.querySelectorAll('[data-k]').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('[data-k]').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      kind = btn.dataset.k;
+      bestPos();
+      render();
+    };
+  });
+
+  const rfB = document.getElementById('rfB');
+  if(rfB){
+    rfB.addEventListener('input', e=>{
+      theta = +e.target.value / 100;
+      update();
+    });
+  }
+
+  let drag = false;
+  function at(ev){
+    const r = cvIn.getBoundingClientRect();
+    const cx = Math.floor((ev.clientX - r.left) / (r.width  / N));
+    const cy = Math.floor((ev.clientY - r.top ) / (r.height / N));
+    ox = Math.max(0, Math.min(N-K, cx - (K>>1)));
+    oy = Math.max(0, Math.min(N-K, cy - (K>>1)));
+    render();
+  }
+  cvIn.addEventListener('pointerdown', e=>{
+    drag = true;
+    cvIn.setPointerCapture(e.pointerId);
+    at(e);
+  });
+  cvIn.addEventListener('pointermove', e=>{ if(drag) at(e); });
+  cvIn.addEventListener('pointerup', ()=>{ drag = false; });
+  cvIn.addEventListener('pointercancel', ()=>{ drag = false; });
+
+  render();
+})();
+
+</script>
+
 </body>
 </html>

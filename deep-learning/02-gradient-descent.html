@@ -121,12 +121,37 @@
     transition:border-color .2s,box-shadow .2s,background .2s;
   }
   .src:hover{border-color:#C7CDFB;background:#FDFDFF;box-shadow:0 6px 16px -8px rgba(79,70,229,.4)}
+  .src .src-a:hover{text-decoration:underline;text-underline-offset:2px}
   .src .src-k{
     font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);
     background:var(--indigo-soft);padding:3px 8px;border-radius:100px;font-weight:600;
   }
   .src .src-t b{color:var(--ink);font-weight:600}
-  .src .src-a{color:var(--indigo);font-weight:500;white-space:nowrap}
+  .src .src-a{color:var(--indigo);font-weight:500;white-space:nowrap;text-decoration:none}
+  .src .src-a + .src-a{padding-left:10px;border-left:1px solid var(--line);line-height:1.1}
+  .src .src-links{display:inline-flex;align-items:center;gap:0;white-space:nowrap}
+
+
+  /* 第一层滤波器 */
+  .fl-wrap{
+    display:grid;grid-template-columns:auto auto auto;
+    gap:clamp(12px,2.4vw,26px);justify-content:center;align-items:center;
+  }
+  .fl-col{display:grid;gap:8px;justify-items:center}
+  .fl-col canvas{display:block;border-radius:8px;box-shadow:0 0 0 1px var(--line)}
+  .fl-cap{font-size:10.5px;color:var(--muted)}
+  .fl-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+  .fl-tab{
+    width:46px;height:46px;padding:0;border:1px solid var(--line);border-radius:10px;
+    background:#fff;cursor:pointer;display:grid;place-items:center;transition:.18s;
+  }
+  .fl-tab canvas{display:block;border-radius:5px}
+  .fl-tab.on{border-color:var(--indigo);box-shadow:0 0 0 2px var(--indigo-soft)}
+  .fl-tab:hover{border-color:#C7CDFB}
+  @media (max-width:760px){
+    .fl-wrap{grid-template-columns:auto auto}
+    .fl-wrap .fl-col:last-child{grid-column:1/-1}
+  }
 
   /* 章节 */
   section{scroll-margin-top:84px;padding:clamp(34px,5vw,52px) 0;border-top:1px solid var(--line)}
@@ -381,8 +406,9 @@
     <a href="#g4">04 走一步看看</a>
     <a href="#g5">05 学习率</a>
     <a href="#g6">06 三种批量</a>
-    <a href="#g7">07 走不动时</a>
-    <a href="#g8">08 小结</a>
+    <a href="#g7">07 学到了什么</a>
+    <a href="#g8">08 走不动时</a>
+    <a href="#g9">09 小结</a>
   </aside>
 
   <main>
@@ -392,7 +418,7 @@
       <h1>让损失<br><em>降下去</em></h1>
       <p class="abstract">
         模型学没学会，只看一个数——损失。梯度下降就是「每一步都朝让损失变小的方向挪一点」。
-        这一章把导数、梯度、学习率和随机性拆开，并且让小球真的在曲面上滚一遍。
+        这一章把导数、梯度、学习率和随机性拆开，让小球真的在曲面上滚一遍，最后回到原片的那个问题：训练完之后，第一层到底在看什么。
       </p>
       <div class="meta-row">
         <span class="tag">Gradient Descent</span>
@@ -401,11 +427,11 @@
         <span class="tag">Convergence</span>
       </div>
 
-      <a class="src" href="https://www.3blue1brown.com/lessons/gradient-descent" target="_blank" rel="noopener">
+      <div class="src">
         <span class="src-k">参考</span>
         <span class="src-t">3Blue1Brown《深度学习》第 2 集 · <b>梯度下降，神经网络如何学习</b></span>
-        <span class="src-a">看原片 ↗</span>
-      </a>
+        <span class="src-links"><a class="src-a" href="https://www.bilibili.com/video/BV1Ux411j7ri/" target="_blank" rel="noopener">B 站 ↗</a><a class="src-a" href="https://www.3blue1brown.com/lessons/gradient-descent" target="_blank" rel="noopener">原片 ↗</a></span>
+      </div>
       
     </div>
 
@@ -678,9 +704,65 @@
       </p>
     </section>
 
-    <!-- ============ 07 ============ -->
+    <!-- ============ 07 学到了什么 ============ -->
     <section id="g7">
-      <div class="s-head"><span class="s-idx">07</span><h2>走不动的时候</h2></div>
+      <div class="s-head"><span class="s-idx">07</span><h2>训练完之后，它到底学到了什么</h2></div>
+
+      <p>
+        一路走下坡之后，那 13 002 个数不再是随机的了。把第一层每个神经元的权重按小图摊开，
+        看到的是一排<b>小条纹</b>：不同角度的边缘检测器。
+        3Blue1Brown 在第 2 集结尾放的就是这张图 —— 没有人告诉网络「去找边缘」，它自己走到了那里。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>First-layer filters</span>
+          <span id="flState">—</span>
+        </div>
+        <div class="panel-b">
+          <div class="fl-wrap">
+            <div class="fl-col">
+              <canvas id="flW"></canvas>
+              <div class="fl-cap">权重 16×16</div>
+            </div>
+            <div class="fl-col">
+              <canvas id="flIn"></canvas>
+              <div class="fl-cap">输入 28×28</div>
+            </div>
+            <div class="fl-col">
+              <canvas id="flResp"></canvas>
+              <div class="fl-cap">响应图 · 越亮越强</div>
+            </div>
+          </div>
+          <div class="fl-tabs" id="flTabs"></div>
+        </div>
+      </div>
+
+      <p>
+        三张图讲的是同一件事：<b>权重</b>决定它在找什么，<b>响应图</b>是它扫过整张图后的回答。
+        亮点出现在哪里，就说明哪里出现了这个方向的条纹 —— 也就是数字的笔画。
+      </p>
+
+      <p>
+        把这套东西叠起来，就是我们第一章说的分层：第一层认边，第二层把边拼成<b>角、弧、短环</b>，
+        再往上才拼成「这是 8」「这是 3」。每一层都在用上一层的输出做自己的加权求和，代价函数只关心最后那十个数字准不准。
+      </p>
+
+      <p>
+        顺便回答一个常见疑问：既然一个滤波器就是一次小的加权求和，那<b>为什么要每个位置都重学一遍</b>？
+        不用。让同一组权重滑过整张图，就是<b>卷积</b>，也是下一章的主角。
+      </p>
+
+      <p class="aside">
+        这里展示的六张滤波器是手工构造的 Gabor 核，形状与 MNIST 上真实训练出来的第一层几乎一致。
+        本站没有在浏览器里跑训练，所以不假装它们是训练产物 —— 但「第一层会长成边缘检测器」这件事，
+        在真实网络里是反复被验证的。
+      </p>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section id="g8">
+      <div class="s-head"><span class="s-idx">08</span><h2>走不动的时候</h2></div>
 
       <p>梯度下降失效的方式就那么几种，认出来就能对症下药。</p>
 
@@ -718,9 +800,9 @@
       </div>
     </section>
 
-    <!-- ============ 08 ============ -->
-    <section id="g8">
-      <div class="s-head"><span class="s-idx">08</span><h2>全景回顾</h2></div>
+    <!-- ============ 09 ============ -->
+    <section id="g9">
+      <div class="s-head"><span class="s-idx">09</span><h2>全景回顾</h2></div>
 
       <p>把一次参数更新拆到不能再拆，就是这四步：</p>
 
@@ -1467,6 +1549,215 @@ function axes(ctx, W, H, pad, xr, yr, sx, sy){
   setTimeout(measure, 150);
   setTimeout(measure, 800);
 })();
+</script>
+
+<script>
+/* ============================================================
+   07 · 训练后第一层学到的滤波器
+   ============================================================ */
+(function(){
+  const cvW = document.getElementById('flW');
+  const cvIn = document.getElementById('flIn');
+  const cvR = document.getElementById('flResp');
+  if(!cvW || !cvIn || !cvR) return;
+
+  const N = 28, K = 16;
+  const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+
+  function prep(cv, w, h){
+    cv.style.width = w+'px'; cv.style.height = h+'px';
+    cv.width = Math.round(w*DPR); cv.height = Math.round(h*DPR);
+    const g = cv.getContext('2d');
+    g.setTransform(DPR,0,0,DPR,0,0);
+    return g;
+  }
+  const SW = 176, SP = 168;
+  const gW = prep(cvW, SW, SW);
+  const gI = prep(cvIn, SP, SP);
+  const gR = prep(cvR, SP, SP);
+
+  /* ---------- 28×28 的 3 ---------- */
+  function makeDigit(ch){
+    const HW = 320;
+    const c = document.createElement('canvas'); c.width = c.height = HW;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0,0,HW,HW);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '700 250px "Segoe UI", Arial, sans-serif';
+    g.fillText(ch, HW/2, HW/2 + 6);
+    const d = g.getImageData(0,0,HW,HW).data;
+
+    let x0 = HW, y0 = HW, x1 = -1, y1 = -1;
+    for(let y=0;y<HW;y++) for(let x=0;x<HW;x++){
+      if(d[(y*HW+x)*4] > 40){
+        if(x<x0) x0=x; if(x>x1) x1=x;
+        if(y<y0) y0=y; if(y>y1) y1=y;
+      }
+    }
+    if(x1 < 0) return new Float32Array(N*N);
+    const w = x1-x0+1, h = y1-y0+1, s = Math.max(w,h);
+    const ox = x0 - (s-w)/2, oy = y0 - (s-h)/2;
+    const side = 20, pad = (N-side)/2;
+    const out = new Float32Array(N*N);
+    for(let ty=0;ty<side;ty++) for(let tx=0;tx<side;tx++){
+      const sx0 = ox + tx/side*s, sy0 = oy + ty/side*s;
+      const sx1 = ox + (tx+1)/side*s, sy1 = oy + (ty+1)/side*s;
+      let sum = 0, cnt = 0;
+      for(let yy = Math.floor(sy0); yy < Math.ceil(sy1); yy++){
+        for(let xx = Math.floor(sx0); xx < Math.ceil(sx1); xx++){
+          if(xx < 0 || yy < 0 || xx >= HW || yy >= HW) continue;
+          sum += d[(yy*HW+xx)*4]/255; cnt++;
+        }
+      }
+      out[(ty+pad)*N + (tx+pad)] = cnt ? sum/cnt : 0;
+    }
+    return out;
+  }
+  const PIX = makeDigit('3');
+
+  /* ---------- 六个方向的 Gabor 核 ---------- */
+  const ANGLES = [0, 30, 60, 90, 120, 150];
+  function gabor(deg){
+    const th = deg*Math.PI/180, w = new Float32Array(K*K);
+    const c = (K-1)/2, sig = 3.4, lam = 8.2;
+    for(let y=0;y<K;y++) for(let x=0;x<K;x++){
+      const dx = x-c, dy = y-c;
+      const xr = dx*Math.cos(th) + dy*Math.sin(th);
+      const env = Math.exp(-(dx*dx + dy*dy)/(2*sig*sig));
+      w[y*K+x] = env * Math.sin(2*Math.PI*xr/lam);
+    }
+    return w;
+  }
+  const FILTERS = ANGLES.map(a=>({ deg: a, w: gabor(a) }));
+
+  /* ---------- 响应图 ---------- */
+  function response(w){
+    const out = new Float32Array(N*N);
+    const pad = K>>1;
+    let abs = 0;
+    for(let i=0;i<K*K;i++) if(w[i] > 0) abs += w[i];
+    abs = abs || 1;
+    let max = 0;
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+      let s = 0;
+      for(let ky=0;ky<K;ky++){
+        const yy = y - pad + ky;
+        if(yy < 0 || yy >= N) continue;
+        for(let kx=0;kx<K;kx++){
+          const xx = x - pad + kx;
+          if(xx < 0 || xx >= N) continue;
+          s += w[ky*K+kx] * PIX[yy*N+xx];
+        }
+      }
+      s /= abs;
+      out[y*N+x] = s;
+      if(s > max) max = s;
+    }
+    return { map: out, max: max || 1 };
+  }
+
+  /* ---------- 画 ---------- */
+  function colorW(v, m){
+    const t = Math.min(1, Math.abs(v)/m);
+    const zero = [248,250,252], pos = [245,158,11], neg = [59,130,246];
+    const to = v >= 0 ? pos : neg;
+    return 'rgb(' + Math.round(zero[0]+(to[0]-zero[0])*t) + ',' +
+                    Math.round(zero[1]+(to[1]-zero[1])*t) + ',' +
+                    Math.round(zero[2]+(to[2]-zero[2])*t) + ')';
+  }
+
+  function drawWeights(w){
+    const cell = SW/K;
+    let m = 0;
+    for(let i=0;i<w.length;i++) m = Math.max(m, Math.abs(w[i]));
+    gW.fillStyle = '#fff'; gW.fillRect(0,0,SW,SW);
+    for(let y=0;y<K;y++) for(let x=0;x<K;x++){
+      gW.fillStyle = colorW(w[y*K+x], m || 1);
+      gW.fillRect(x*cell, y*cell, cell, cell);
+    }
+    gW.strokeStyle = 'rgba(208,213,221,.5)';
+    gW.lineWidth = 1;
+    gW.strokeRect(0.5, 0.5, SW-1, SW-1);
+  }
+
+  function drawInput(peak){
+    const cell = SP/N;
+    gI.fillStyle = '#fff'; gI.fillRect(0,0,SP,SP);
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+      const v = PIX[y*N+x];
+      gI.fillStyle = 'rgb(' + Math.round(255-v*225) + ',' + Math.round(255-v*214) + ',' + Math.round(255-v*198) + ')';
+      gI.fillRect(x*cell, y*cell, cell, cell);
+    }
+    if(peak){
+      const x0 = (peak.bx - (K>>1)) * cell, y0 = (peak.by - (K>>1)) * cell;
+      gI.strokeStyle = '#4F46E5';
+      gI.lineWidth = 1.5;
+      gI.strokeRect(x0 + 0.75, y0 + 0.75, K*cell - 1.5, K*cell - 1.5);
+    }
+  }
+
+  function drawResp(res){
+    const cell = SP/N;
+    gR.fillStyle = '#fff'; gR.fillRect(0,0,SP,SP);
+    let bx = 0, by = 0, bv = -Infinity;
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+      const v = res.map[y*N+x];
+      const t = Math.pow(Math.max(0, Math.min(1, v/res.max)), 0.55);
+      gR.fillStyle = 'rgb(' + Math.round(250-(250-79)*t) + ',' +
+                              Math.round(250-(250-70)*t) + ',' +
+                              Math.round(252-(252-229)*t) + ')';
+      gR.fillRect(x*cell, y*cell, cell, cell);
+      if(v > bv){ bv = v; bx = x; by = y; }
+    }
+    // 最亮点
+    gR.strokeStyle = 'rgba(12,17,29,.75)';
+    gR.lineWidth = 1.5;
+    gR.strokeRect(bx*cell + 0.5, by*cell + 0.5, cell-1, cell-1);
+    return { bx, by, bv };
+  }
+
+  const elState = document.getElementById('flState');
+  const tabs = document.getElementById('flTabs');
+  let idx = 0;
+
+  function show(i){
+    idx = i;
+    const f = FILTERS[i];
+    drawWeights(f.w);
+    const res = response(f.w);
+    const best = drawResp(res);
+    drawInput(best);
+    elState.textContent = f.deg + '° · 最强响应 ' + best.bv.toFixed(2) + ' @ (' + best.bx + ',' + best.by + ')';
+    [...tabs.children].forEach((b,j)=>b.classList.toggle('on', j === i));
+  }
+
+  /* ---------- 缩略图按钮 ---------- */
+  FILTERS.forEach((f, i)=>{
+    const b = document.createElement('button');
+    b.className = 'fl-tab';
+    b.type = 'button';
+    b.title = f.deg + '°';
+    const c = document.createElement('canvas');
+    const S = 38;
+    c.width = Math.round(S*DPR); c.height = Math.round(S*DPR);
+    c.style.width = S+'px'; c.style.height = S+'px';
+    const g = c.getContext('2d');
+    g.setTransform(DPR,0,0,DPR,0,0);
+    let m = 0;
+    for(let j=0;j<f.w.length;j++) m = Math.max(m, Math.abs(f.w[j]));
+    const cell = S/K;
+    for(let y=0;y<K;y++) for(let x=0;x<K;x++){
+      g.fillStyle = colorW(f.w[y*K+x], m || 1);
+      g.fillRect(x*cell, y*cell, cell, cell);
+    }
+    b.appendChild(c);
+    b.onclick = ()=>show(i);
+    tabs.appendChild(b);
+  });
+
+  show(0);
+})();
+
 </script>
 
 </body>
