@@ -82,7 +82,7 @@
     background:linear-gradient(100deg,#4F46E5,#7C3AED 58%,#0E9F6E);
     -webkit-background-clip:text;background-clip:text;color:transparent;
   }
-  .lede{font-size:15.5px;line-height:1.78;color:var(--body);max-width:44ch;margin-bottom:30px}
+  .lede{font-size:15.5px;line-height:1.8;color:var(--body);max-width:30em;margin-bottom:30px}
   .lede b{color:var(--ink);font-weight:600}
   .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .btn{
@@ -114,6 +114,33 @@
     font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.05em;
   }
   .hc-foot b{color:var(--indigo);font-weight:600}
+
+  .kick{
+    display:flex;align-items:center;gap:10px;margin-bottom:14px;
+    font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;
+  }
+  .kick i{display:block;width:20px;height:1px;background:var(--line-2)}
+
+  /* 最近写的 */
+  .rc-row{
+    display:grid;grid-template-columns:34px minmax(0,1fr) 18px;gap:12px;align-items:center;
+    padding:13px 4px;border-bottom:1px solid var(--line);
+    text-decoration:none;color:inherit;transition:background .18s;
+  }
+  .rc-row:first-of-type{border-top:1px solid var(--line);margin-top:6px}
+  .rc-row:hover{background:#FAFBFF}
+  .rc-id{
+    font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--indigo);
+    background:var(--indigo-soft);border-radius:6px;padding:3px 0;text-align:center;
+  }
+  .rc-body{display:grid;gap:2px;min-width:0}
+  .rc-body b{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+  .rc-body i{
+    font-style:normal;font-size:11px;color:var(--muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .rc-arrow{font-size:13px;color:var(--line-2);transition:transform .18s,color .18s}
+  .rc-row:hover .rc-arrow{color:var(--indigo);transform:translateX(3px)}
 
   /* ---------- stats ---------- */
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:clamp(24px,3.4vw,36px) 0 clamp(44px,5.5vw,64px)}
@@ -273,7 +300,7 @@
     <nav class="pill-nav">
       <a href="index.html" class="on">首页</a>
       <a href="deep-learning/01-mlp.html">深度学习</a>
-      <a href="#notes">笔记</a>
+      <a href="signals/01-convolution.html">信号</a>
       <a href="#about">关于</a>
     </nav>
     <a class="gh-btn" href="https://github.com/Apiginchaosr" target="_blank" rel="noopener">
@@ -284,16 +311,15 @@
 
   <section class="hero">
     <div>
-      <div class="badge"><b>NEW</b> 5 篇上线 · 深度学习 3 章 + 信号与系统 2 章</div>
-      <div class="hi">Hi, 我是 <b>Apiginchaosr</b></div>
-      <h1>把神经网络<br><em>拆开</em>来看</h1>
+      <div class="badge"><b>NEW</b> 10 月 18 日 · 新增反向传播、卷积、傅里叶</div>
+      <div class="kick"><i></i>SUSTech · 信息工程 · 2025 级</div>
+      <h1>深度学习<br><em>笔记</em></h1>
       <p class="lede">
-        南方科技大学信息工程在读。
-        这里是我把学过的东西 <b>拆成零件</b>、再装回去的地方——有推导，
-        有动画演示。
+        我是 Apiginchaosr。看教材和视频时总会卡在某个地方，卡住的那一段就写一篇，
+        能画成图的全做成可以拖的。现在有 5 篇，信号与系统刚起步，往后接着加。
       </p>
       <div class="actions">
-        <a class="btn" href="deep-learning/01-mlp.html">开始学习 <span class="arrow">→</span></a>
+        <a class="btn" href="deep-learning/01-mlp.html">从第 1 章读起 <span class="arrow">→</span></a>
         <a class="btn sec" href="#about">关于我</a>
       </div>
     </div>
@@ -301,62 +327,39 @@
     <div class="hero-card">
       <div class="hc-top">
         <div>
-          <div class="hc-title">Forward propagation</div>
-          <div class="hc-sub">784 → 128 → 64 → 10</div>
+          <div class="hc-title">最近写的</div>
+          <div class="hc-sub">updated 2026.10.18</div>
         </div>
         <div class="dot-row"><i></i><i></i><i></i></div>
       </div>
-      <svg viewBox="0 0 420 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="#4F46E5" stop-opacity=".12"/>
-            <stop offset="1" stop-color="#4F46E5" stop-opacity=".42"/>
-          </linearGradient>
-        </defs>
-        <g stroke="url(#edge)" stroke-width=".8">
-          <path d="M46 100 L140 40 M46 100 L140 75 M46 100 L140 110 M46 100 L140 145"/>
-          <path d="M140 40 L250 55 M140 40 L250 95 M140 40 L250 135
-                   M140 75 L250 55 M140 75 L250 95 M140 75 L250 135
-                   M140 110 L250 55 M140 110 L250 95 M140 110 L250 135
-                   M140 145 L250 55 M140 145 L250 95 M140 145 L250 135"/>
-          <path d="M250 55 L360 70 M250 55 L360 100 M250 55 L360 130
-                   M250 95 L360 70 M250 95 L360 100 M250 95 L360 130
-                   M250 135 L360 70 M250 135 L360 100 M250 135 L360 130"/>
-        </g>
-        <g fill="#fff" stroke="#B9C0CE" stroke-width="1.4">
-          <circle cx="46" cy="100" r="7"/>
-          <circle cx="140" cy="40" r="5.5"/><circle cx="140" cy="75" r="5.5"/>
-          <circle cx="140" cy="110" r="5.5"/><circle cx="140" cy="145" r="5.5"/>
-          <circle cx="250" cy="55" r="5.5"/><circle cx="250" cy="95" r="5.5"/><circle cx="250" cy="135" r="5.5"/>
-          <circle cx="360" cy="70" r="5.5"/><circle cx="360" cy="130" r="5.5"/>
-        </g>
-        <circle cx="360" cy="100" r="8" fill="#4F46E5"/>
-        <circle cx="360" cy="100" r="13" fill="#4F46E5" fill-opacity=".12"/>
-        <g font-family="ui-monospace, monospace" font-size="8" fill="#98A2B3">
-          <text x="34" y="128">784</text>
-          <text x="128" y="172">128</text>
-          <text x="240" y="172">64</text>
-          <text x="348" y="172">10</text>
-        </g>
-      </svg>
+
+      <a class="rc-row" href="deep-learning/03-backprop.html">
+        <span class="rc-id">03</span>
+        <span class="rc-body"><b>反向传播</b><i>δ 怎么一层层退回去</i></span>
+        <span class="rc-arrow">→</span>
+      </a>
+      <a class="rc-row" href="signals/02-fourier.html">
+        <span class="rc-id">S2</span>
+        <span class="rc-body"><b>傅里叶变换</b><i>把信号缠到圆上找重心</i></span>
+        <span class="rc-arrow">→</span>
+      </a>
+      <a class="rc-row" href="signals/01-convolution.html">
+        <span class="rc-id">S1</span>
+        <span class="rc-body"><b>卷积</b><i>翻转、平移、相乘、相加</i></span>
+        <span class="rc-arrow">→</span>
+      </a>
+
       <div class="hc-foot">
-        <span>预测 <b>3</b> · 置信度 74.9%</span>
-        <span>softmax · T=1.0</span>
+        <span>深度学习 3 篇 · 信号 2 篇</span>
+        <span>纯静态 · 无框架</span>
       </div>
     </div>
   </section>
 
-  <dl class="stats">
-    <div class="stat"><dt>院校</dt><dd>南方科技大学<span>SUSTech</span></dd></div>
-    <div class="stat"><dt>专业</dt><dd>信息工程<span>Information Eng.</span></dd></div>
-    <div class="stat"><dt>年级</dt><dd>2025 级 · 本科<span>Class of 2029</span></dd></div>
-    <div class="stat"><dt>方向</dt><dd>深度学习 · IC 设计<span>Deep Learning / IC Design</span></dd></div>
-  </dl>
-
   <div class="sec-head" id="notes">
     <div>
       <h2>学习轨迹</h2>
-      <p>从最小的网络开始，脉络跟着 3Blue1Brown 的《深度学习》系列走。</p>
+      <p>按 3Blue1Brown 的《深度学习》系列写的，一章对应一集。</p>
     </div>
     <a class="link-more" href="deep-learning/01-mlp.html">查看全部 →</a>
   </div>
@@ -371,7 +374,7 @@
       <span class="status">已上线</span>
       <span class="no">01</span>
       <h3>MLP 识别手写数字</h3>
-      <p>从一张 28×28 的灰度图出发，走完展平、加权求和、激活、堆叠直至 softmax 与反向传播的整条链路。</p>
+      <p>把一张 28×28 的图变成 10 个概率，中间每一步都能停下来自己看。</p>
       <div class="tags">
         <span class="tag ep">3B1B Ep.1</span>
         <span class="tag">MLP</span>
@@ -383,7 +386,7 @@
       <span class="status">已上线</span>
       <span class="no">02</span>
       <h3>梯度下降</h3>
-      <p>从导数、梯度讲到学习率与 SGD，用可以真正跑起来的下降动画，看小球怎么一步步滑向谷底——以及为什么会飞出去。</p>
+      <p>导数、梯度、学习率、小批量。拖一下 η，看小球是滑到谷底还是直接飞出去。</p>
       <div class="tags">
         <span class="tag ep">3B1B Ep.2</span>
         <span class="tag">Gradient</span>
@@ -395,7 +398,7 @@
       <span class="status">已上线</span>
       <span class="no">03</span>
       <h3>反向传播</h3>
-      <p>梯度到底是怎么一层层退回去的：为什么说它在做「责任分配」，以及链式法则怎么写成一串矩阵乘法。</p>
+      <p>误差怎么一层层退回去，链式法则在一层网络里长什么样，以及矩阵形式怎么写。</p>
       <div class="tags"><span class="tag ep">3B1B Ep.3–4</span><span class="tag">Chain Rule</span><span class="tag">δ</span></div>
     </a>
     <a class="ch off" href="#">
@@ -423,7 +426,6 @@
       <a class="go" href="https://www.3blue1brown.com/topics/neural-networks" target="_blank" rel="noopener">官网 ↗</a>
     </span>
   </div>
-  <p class="cards-note">第 3–4 集之后就讲完了；卷积网络与注意力机制留到后面。</p>
 
   <div class="track-h" style="margin-top:34px">
     <span class="th-k"><i>02</i>信号与系统</span>
@@ -435,14 +437,14 @@
       <span class="status">已上线</span>
       <span class="no">01</span>
       <h3>卷积</h3>
-      <p>翻转、平移、相乘、相加 —— 从离散滑动到冲激叠加，再到图像上那个 3×3 的小窗口。</p>
+      <p>翻转、平移、相乘、相加。从离散滑动到图像上那个 3×3 的小窗口。</p>
       <div class="tags"><span class="tag">Convolution</span><span class="tag">LTI</span><span class="tag">Kernel</span></div>
     </a>
     <a class="ch live" href="signals/02-fourier.html">
       <span class="status">已上线</span>
       <span class="no">02</span>
       <h3>傅里叶变换</h3>
-      <p>把信号按频率缠到圆上，重心偏多少就是那个频率的份量。附方波谐波叠加与低通滤波。</p>
+      <p>把信号按频率缠到圆上，重心偏多少就是那个频率的份量。附方波叠加和低通。</p>
       <div class="tags"><span class="tag">Fourier</span><span class="tag">Spectrum</span><span class="tag">Filter</span></div>
     </a>
   </div>
@@ -450,23 +452,26 @@
 
   <div class="sec-head" style="margin-top:clamp(40px,5.5vw,64px)">
     <div>
-      <h2>我在意的事</h2>
-      <p>决定了这个站长什么样。</p>
+      <h2>这个站是怎么做的</h2>
+      <p>几个实现上的选择。</p>
     </div>
   </div>
 
   <div class="focus-grid">
     <div class="focus">
       <div class="ico">◎</div>
-      <h4>可视化优先</h4>
+      <h4>图都能拖</h4>
+      <p>每一节的演示都是手写的 Canvas，不是截图也不是动图。滑块拖到哪，图就画到哪。</p>
     </div>
     <div class="focus">
       <div class="ico">∑</div>
-      <h4>手算一遍</h4>
+      <h4>数字是现算的</h4>
+      <p>手写数字、卷积核、频谱都在浏览器里算，换个样本、改个参数，结果真的会变。</p>
     </div>
     <div class="focus">
       <div class="ico">▤</div>
-      <h4>小模型，全流程</h4>
+      <h4>代码是公开的</h4>
+      <p>纯静态 HTML，没有框架也不用构建。仓库在 GitHub，觉得哪句写错了可以直接改。</p>
     </div>
   </div>
 
@@ -474,12 +479,12 @@
     <div>
       <h3>关于我</h3>
       <p>
-        我是 <b>Apiginchaosr</b>，南方科技大学 2025 级信息工程本科生。
-        目前主要在两个方向上下功夫：<b>深度学习</b>；
-        <b>IC 设计</b>。
+        我是 <b>Apiginchaosr</b>，南方科技大学 2025 级信息工程。在学深度学习和 IC 设计，
+        两边都还是入门，这里写下来的更像是给自己用的复习材料。
       </p>
       <p style="margin-bottom:0">
-        这个站是我学习的资料库。
+        发现哪里写错了，<a href="https://github.com/Apiginchaosr/Apiginchaosr.github.io/issues"
+        target="_blank" rel="noopener" style="color:var(--indigo);text-decoration:none">开个 issue</a> 就行。
       </p>
     </div>
     <dl class="kv">
