@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>01 · MLP 识别手写数字 | EE'25 Notes</title>
+<style>
+  :root{
+    --bg:#F4F5F8;
+    --card:#FFFFFF;
+    --ink:#0C111D;
+    --body:#475467;
+    --muted:#98A2B3;
+    --line:#EAECF0;
+    --line-strong:#D0D5DD;
+    --indigo:#4F46E5;
+    --indigo-2:#4338CA;
+    --indigo-soft:#EEF0FF;
+    --cyan:#4F46E5;
+    --violet:#7C3AED;
+    --pink:#E05252;
+    --amber:#B54708;
+    --green:#0E9F6E;
+    --radius:18px;
+    --shadow-sm:0 1px 2px rgba(16,24,40,.04);
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 14px 34px -16px rgba(16,24,40,.14);
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Inter,sans-serif;
+    --mono:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;
+    --math:"Cambria Math","Latin Modern Math",Cambria,Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.78;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(820px 460px at 8% -10%, rgba(79,70,229,.10), transparent 62%),
+      radial-gradient(700px 400px at 94% 0%, rgba(14,159,110,.08), transparent 60%);
+  }
+  /* 顶部阅读进度 */
+  #progress{
+    position:fixed;top:0;left:0;height:2px;width:0;z-index:99;
+    background:linear-gradient(90deg,#4F46E5,#7C3AED);
+    transition:width .12s linear;
+  }
+  /* 导航 */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 clamp(18px,4vw,56px);height:62px;
+    background:rgba(244,245,248,.82);backdrop-filter:blur(14px) saturate(160%);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:650;font-size:14.5px;letter-spacing:-.02em}
+  .logo-mark{
+    width:27px;height:27px;border-radius:8px;display:grid;place-items:center;flex:none;
+    background:linear-gradient(145deg,#6366F1,#4338CA);
+    box-shadow:0 3px 10px -2px rgba(79,70,229,.45);
+  }
+  .logo-mark::before{content:"◈";color:#fff;font-size:12px;line-height:1}
+  .logo-txt{font-family:var(--sans);font-size:14.5px;letter-spacing:-.02em}
+  .nav-r{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--body)}
+  .nav-r a{color:var(--body);text-decoration:none;transition:color .25s;display:inline-flex;align-items:center;gap:6px}
+  .nav-r a:hover{color:var(--indigo)}
+  .chip{
+    border:1px solid var(--line);background:#fff;border-radius:100px;
+    padding:5px 12px;font-size:10.5px;letter-spacing:.08em;color:var(--muted);
+    text-transform:uppercase;box-shadow:var(--shadow-sm);
+  }
+
+  /* 布局：侧栏 + 正文 */
+  .shell{
+    display:grid;grid-template-columns:200px minmax(0,1fr);
+    gap:clamp(24px,4vw,64px);
+    max-width:1200px;margin:0 auto;padding:0 clamp(18px,4vw,56px);
+    align-items:start;
+  }
+  .toc{position:sticky;top:88px;padding:30px 0 40px;font-size:12px}
+  .toc-h{color:var(--muted);letter-spacing:.18em;font-size:9.5px;text-transform:uppercase;margin-bottom:12px}
+  .toc a{
+    display:block;color:var(--body);text-decoration:none;
+    padding:8px 0 8px 12px;border-left:2px solid var(--line);
+    transition:all .25s;line-height:1.5;
+  }
+  .toc a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+  .toc a.on{color:var(--indigo);border-left-color:var(--indigo);font-weight:550}
+  @media (max-width: 900px){
+    .shell{display:block;max-width:none}
+    .toc{display:none}
+  }
+
+  main{padding-bottom:40px;min-width:0}
+
+  /* 章节头 */
+  .chap-head{padding:clamp(36px,6vw,64px) 0 clamp(24px,4vw,36px)}
+  .crumb{font-size:10.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:20px}
+  .crumb span{color:var(--indigo)}
+  h1{font-size:clamp(30px,4.6vw,46px);line-height:1.18;letter-spacing:-.03em;font-weight:650;margin-bottom:18px}
+  h1 em{
+    font-style:normal;
+    background:linear-gradient(100deg,#4F46E5,#7C3AED 70%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .abstract{color:var(--body);font-size:clamp(14px,1.6vw,15.5px);max-width:60ch}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .tag{
+    font-size:10.5px;padding:4px 10px;border-radius:100px;
+    background:var(--indigo-soft);color:var(--indigo-2);font-weight:500;
+  }
+
+  /* 章节 */
+  section{scroll-margin-top:84px;padding:clamp(34px,5vw,52px) 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  .s-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
+  .s-idx{
+    font-family:var(--mono);font-size:11px;color:var(--indigo);
+    background:var(--indigo-soft);border-radius:6px;padding:2px 8px;flex:none;font-weight:600;
+  }
+  h2{font-size:clamp(20px,2.5vw,25px);font-weight:650;letter-spacing:-.025em;line-height:1.4}
+  h3{font-size:15px;font-weight:650;margin:26px 0 10px;color:var(--ink);letter-spacing:-.01em}
+  p{color:var(--body);font-size:14.8px;margin:12px 0;max-width:68ch;line-height:1.85}
+  p b,li b{color:var(--ink);font-weight:600}
+  p .hl{color:var(--indigo);font-weight:500}
+  ul,ol{margin:12px 0 12px 2px;padding-left:20px;max-width:68ch}
+  li{color:var(--body);font-size:14.5px;margin:7px 0;line-height:1.8}
+  code{
+    font-family:var(--mono);font-size:12.8px;background:#F2F4F7;
+    border:1px solid var(--line);padding:1.5px 6px;border-radius:5px;color:#344054;
+  }
+  strong.warn{color:var(--amber);font-weight:600}
+
+  /* 公式 */
+  .formula{
+    font-family:var(--math);font-size:clamp(17px,2vw,20px);letter-spacing:.01em;
+    color:var(--ink);padding:18px 22px;margin:18px 0;
+    border-left:3px solid var(--indigo);border-radius:0 12px 12px 0;
+    background:#F7F8FC;
+    overflow-x:auto;line-height:2.1;
+  }
+  .formula .v{font-style:italic;font-family:var(--math)}
+  .formula .sub{font-size:.72em;vertical-align:-.28em;font-style:italic}
+  .formula .sup{font-size:.72em;vertical-align:.42em}
+  .formula .op{color:var(--muted);padding:0 .3em;font-style:normal}
+  .formula .note{display:block;font-family:var(--sans);font-size:11.5px;color:var(--muted);letter-spacing:.02em;margin-top:6px;font-style:normal;line-height:1.7}
+
+  /* 卡片 */
+  .panel{
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    background:var(--card);box-shadow:var(--shadow);
+    margin:24px 0;position:relative;
+  }
+  .panel-h{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:13px 18px;border-bottom:1px solid var(--line);
+    font-size:11px;letter-spacing:.06em;color:var(--muted);
+  }
+  .panel-h .dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--indigo);margin-right:8px;vertical-align:1px;
+  }
+  .panel-b{padding:clamp(16px,2.4vw,24px)}
+
+  /* 提示块 */
+  .aside{
+    border:1px solid #FEDF89;border-radius:12px;padding:14px 18px;margin:20px 0;
+    background:#FFFAEB;font-size:13.6px;color:#7A4E1E;line-height:1.75;max-width:70ch;
+  }
+  .aside b{color:#B54708}
+  .aside .lbl{font-size:10px;letter-spacing:.14em;color:#B54708;display:block;margin-bottom:5px;text-transform:uppercase;font-weight:600}
+
+  /* 控件 */
+  .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{
+    font-size:12px;font-weight:500;
+    padding:8px 14px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--line-strong);background:#fff;color:var(--body);
+    transition:all .2s;line-height:1.2;
+  }
+  .btn:hover{border-color:#B4BAC6;color:var(--ink);background:#FCFCFD}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600;box-shadow:0 2px 8px -2px rgba(79,70,229,.5)}
+  .btn.primary:hover{background:var(--indigo-2);color:#fff}
+  .btn.on{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+  .btn.sm{padding:5px 10px;font-size:11px}
+  .num-btns{display:flex;gap:5px;flex-wrap:wrap}
+  .num-btns .btn{width:32px;padding:6px 0;text-align:center;font-size:11.5px}
+
+  /* 数字网格 */
+  .grid-wrap{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(16px,3vw,34px);align-items:start}
+  @media (max-width: 700px){.grid-wrap{grid-template-columns:minmax(0,1fr)}}
+  #gridcv{
+    display:block;border-radius:12px;cursor:crosshair;
+    border:1px solid var(--line);box-shadow:0 8px 24px -12px rgba(16,24,40,.18);
+  }
+  .readout{display:grid;gap:8px;font-size:11.5px;color:var(--muted);align-content:start;padding-top:2px}
+  .readout .kv{display:flex;gap:10px;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:6px}
+  .readout .kv b{color:var(--ink);font-weight:600}
+
+  /* 柱状图 */
+  .bars{display:flex;align-items:flex-end;gap:clamp(4px,1vw,10px);padding-top:8px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+  .bar-track{
+    width:100%;height:118px;display:flex;align-items:flex-end;
+    background:#F2F4F7;border-radius:6px;overflow:hidden;
+  }
+  .bar-fill{
+    width:100%;background:linear-gradient(180deg,#818CF8,#4F46E5);
+    border-radius:6px 6px 0 0;transition:height .5s cubic-bezier(.16,1,.3,1);
+    height:0;
+  }
+  .bar-fill.win{background:linear-gradient(180deg,#4F46E5,#3730A3);box-shadow:0 0 12px rgba(79,70,229,.35)}
+  .bar-lbl{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  .bar-val{font-family:var(--mono);font-size:9.5px;color:var(--muted);height:12px}
+
+  /* 神经元 demo */
+  .neu-demo{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:clamp(16px,3vw,30px);align-items:center}
+  @media (max-width: 720px){.neu-demo{grid-template-columns:minmax(0,1fr)}}
+  .neu-rows{display:grid;gap:10px}
+  #smBars{justify-content:flex-start;gap:20px;margin-top:26px !important}
+  #smBars .bar-col{flex:0 0 88px}
+  #smBars .bar-track{height:112px}
+  .neu-row{display:grid;grid-template-columns:max-content 1fr 84px;gap:14px;align-items:center}
+  .neu-x{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+    background:#E4E7EC;outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;border:2px solid #fff;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    border:2px solid #fff;box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;
+  }
+  .neu-w{font-family:var(--mono);font-size:11px;color:var(--indigo);text-align:right}
+  .neu-out{
+    border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;
+    background:#FCFCFD;
+  }
+  .neu-out .big{font-family:var(--mono);font-size:26px;color:var(--indigo);line-height:1.3}
+  .neu-out .lbl{font-size:9.5px;letter-spacing:.05em;color:var(--muted)}
+
+  /* 网络 canvas 面板 */
+  .net-stage{position:relative;background:#FCFCFD}
+  #netcv{display:block;width:100%;height:auto}
+  .net-status{
+    display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);letter-spacing:.02em;min-height:40px;
+  }
+  .net-status .ph{color:var(--indigo);font-weight:600}
+  .net-summary{
+    display:flex;flex-wrap:wrap;gap:22px;padding:14px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .net-summary b{color:var(--ink);font-weight:600}
+  .net-summary .win b{color:var(--indigo)}
+
+  /* 曲线 */
+  .curve-box{position:relative}
+  svg.curve{width:100%;height:auto;display:block;overflow:visible}
+  .curve-lbl{font-family:var(--mono);font-size:9.5px;fill:var(--muted);letter-spacing:.04em}
+
+  /* 流程回顾 */
+  .flow{display:grid;gap:0;margin:22px 0}
+  .flow-step{display:grid;grid-template-columns:26px minmax(0,1fr);gap:16px;padding:14px 0;position:relative}
+  .flow-step:not(:last-child)::before{
+    content:"";position:absolute;left:12.5px;top:38px;bottom:-4px;width:1px;
+    background:linear-gradient(180deg,#C7D2FE,#EEF0FF);
+  }
+  .flow-n{
+    width:26px;height:26px;border-radius:50%;border:1px solid #C7D2FE;
+    display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--indigo);
+    background:#fff;z-index:1;font-weight:600;
+  }
+  .flow-t{font-size:14px;font-weight:650;margin-bottom:3px}
+  .flow-d{font-size:13px;color:var(--body);line-height:1.7}
+  .flow-d code{font-size:12px}
+
+  /* 公式速查 */
+  .cheat{display:grid;gap:10px}
+  .cheat-row{
+    display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;align-items:center;
+    padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;
+  }
+  .cheat-k{font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+  .cheat-v{font-family:var(--math);font-size:15.5px;color:var(--ink);overflow-x:auto;white-space:nowrap}
+  @media (max-width: 640px){
+    .cheat-row{grid-template-columns:minmax(0,1fr);gap:6px}
+    .cheat-v{white-space:normal}
+  }
+
+  .foot-nav{
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    border-top:1px solid var(--line);padding:30px 0 60px;margin-top:20px;
+  }
+  .foot-nav a{
+    font-size:12.5px;color:var(--body);text-decoration:none;
+    border:1px solid var(--line);border-radius:8px;padding:10px 16px;transition:all .25s;background:#fff;
+  }
+  .foot-nav a:hover{color:var(--indigo);border-color:#C7D2FE}
+  .foot-nav a.dim{opacity:.45;pointer-events:none}
+
+  .rise{transform:translateY(14px);transition:transform .55s cubic-bezier(.16,1,.3,1)}
+  .rise.in{transform:none}
+
+  @media (max-width: 620px){
+    .panel-h{flex-direction:column;align-items:flex-start;gap:10px}
+    .num-btns{width:100%}
+    .num-btns .btn{flex:1 1 0;width:auto;padding:6px 0}
+    .nav-r .chip{display:none}
+    h1{font-size:clamp(26px,7vw,32px)}
+    p,li{font-size:14px}
+    .net-summary{gap:14px}
+    #smBars .bar-col{flex:1 1 0;min-width:0}
+  }
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<header class="nav">
+  <a class="logo" href="../index.html">
+    <span class="logo-mark"></span>
+    <span class="logo-txt">Apiginchaosr</span>
+  </a>
+  <div class="nav-r">
+    <span class="chip">Chapter 01</span>
+    <a href="../index.html">← 首页</a>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="toc">
+    <div class="toc-h">Contents</div>
+    <a href="#s1" class="on">01 数字是什么</a>
+    <a href="#s2">02 一个神经元</a>
+    <a href="#s3">03 非线性</a>
+    <a href="#s4">04 堆成网络</a>
+    <a href="#s5">05 Softmax</a>
+    <a href="#s6">06 训练</a>
+    <a href="#s7">07 小结</a>
+  </aside>
+
+  <main>
+    <!-- ============ 章节头 ============ -->
+    <div class="chap-head">
+      <div class="crumb">DEEP&nbsp;LEARNING <span>/</span> CHAPTER 01</div>
+      <h1>让网络认出<br>一个手写<em>数字</em></h1>
+      <p class="abstract">
+        这一章只做一件事：把一个 28×28 的像素矩阵，一步步变成「是 7 的概率为 96%」。
+        中间每一步都能看见 —— 逐像素扫描、加权求和、非线性、层间传递、softmax、反向传播。
+      </p>
+      <div class="meta-row">
+        <span class="tag">MLP</span>
+        <span class="tag">784 → 128 → 64 → 10</span>
+        <span class="tag">Forward Pass</span>
+        <span class="tag">Backprop</span>
+      </div>
+    </div>
+
+    <!-- ============ 01 数字是什么 ============ -->
+    <section id="s1">
+      <div class="s-head"><span class="s-idx">01</span><h2>机器没有「看见」，它只拿到一串数</h2></div>
+
+      <p>
+        你看到下图里的 <b>7</b>，会立刻想到"拐角、一横、一撇"。但计算机拿到的只是
+        <b>28 × 28 = 784 个 0 到 1 之间的灰度值</b> —— 一片数字。它不知道什么是笔画，
+        更不知道什么是"七"。所谓识别，本质上是寻找一种映射：
+      </p>
+
+      <div class="formula">
+        <span class="v">f</span> : ℝ<span class="sup">784</span> <span class="op">→</span> ℝ<span class="sup">10</span>
+        <span class="note">输入 784 维像素向量，输出 10 个类别的得分（数字 0~9）</span>
+      </div>
+
+      <p>
+        把鼠标放到网格上，可以看到每个格子真实的坐标和灰度；点「展平」按钮，
+        它会被按行优先的顺序拉成一条长 784 的向量 —— 这正是网络真正的输入形态。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>MNIST sample · 28 × 28</span>
+          <div class="ctrl-row">
+            <div class="num-btns" id="s1nums"></div>
+            <button class="btn sm" id="btnFlat">展平 → 784</button>
+          </div>
+        </div>
+        <div class="panel-b">
+          <div class="grid-wrap">
+            <canvas id="gridcv" width="280" height="280"></canvas>
+            <div class="readout">
+              <div class="kv"><span>坐标 (x, y)</span><b id="r-coord">—</b></div>
+              <div class="kv"><span>像素索引</span><b id="r-idx">—</b></div>
+              <div class="kv"><span>灰度值</span><b id="r-val">—</b></div>
+              <div class="kv"><span>张量形状</span><b>1 × 784</b></div>
+              <div class="kv"><span>取值范围</span><b>[0, 1]</b></div>
+              <canvas id="flatcv" width="784" height="46" style="width:100%;height:46px;margin-top:10px;border-radius:6px;background:#F2F4F7"></canvas>
+              <div style="font-size:10px;letter-spacing:.1em;opacity:.55">↑ 展平后的 784 维向量</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        这 784 个数里，<span class="hl">绝大部分是背景</span>，真正的信息集中在几十个亮点上 —— 但网络一开始并不知道哪些重要。
+        所以每个输入都要配一个权重，让网络自己学出"该看哪里"。
+      </p>
+    </section>
+
+    <!-- ============ 02 一个神经元 ============ -->
+    <section id="s2">
+      <div class="s-head"><span class="s-idx">02</span><h2>一个神经元：一次加权打分</h2></div>
+
+      <p>
+        拉出网络里的任意一个神经元，它做的事简单到只有两步 —— <b>先加权求和，再过一个非线性</b>。
+      </p>
+
+      <div class="formula">
+        <span class="v">z</span> <span class="op">=</span>
+        <span style="color:var(--cyan)">∑</span><span class="sub">i</span>
+        <span class="v">w</span><span class="sub">i</span><span class="v">x</span><span class="sub">i</span>
+        <span class="op">+</span> <span class="v">b</span>
+        <br>
+        <span class="v">a</span> <span class="op">=</span>
+        <span class="v">ReLU</span>(<span class="v">z</span>) <span class="op">=</span> max(0, <span class="v">z</span>)
+        <span class="note">wᵢ 是权重（这个输入有多重要），b 是偏置（整体阈值），a 是激活值（这个神经元"有多兴奋"）</span>
+      </div>
+
+      <p>
+        把它理解成<b>打分</b>：权重像一个模板，输入和模板越像，点积越大。下面四个输入固定，拖动权重看输出怎么变：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h"><span><span class="dot"></span>Single neuron · 4 inputs</span><span id="neu-formula-live">z = 0.00</span></div>
+        <div class="panel-b">
+          <div class="neu-demo">
+            <div class="neu-rows" id="neuRows"></div>
+            <div class="neu-out">
+              <div class="lbl">z</div>
+              <div class="big" id="neu-z" style="font-size:20px">0.00</div>
+              <div class="lbl" style="margin-top:10px">a = ReLU(z)</div>
+              <div class="big" id="neu-a">0.00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        注意 <code>ReLU</code> 的作用：<b>z 是负的就归零</b>。这意味着神经元可以"不发言" ——
+        大部分神经元处于关闭状态，网络因此是稀疏激活的。如果不加这个函数，z 直接往后传，会发生什么？下一节。
+      </p>
+    </section>
+
+    <!-- ============ 03 非线性 ============ -->
+    <section id="s3">
+      <div class="s-head"><span class="s-idx">03</span><h2>为什么必须有非线性</h2></div>
+
+      <p>
+        假设没有激活函数，两层网络是这样叠加的：
+      </p>
+
+      <div class="formula">
+        <span class="v">a</span><span class="sup">(2)</span> <span class="op">=</span>
+        <span class="v">W</span><span class="sup">(2)</span>(<span class="v">W</span><span class="sup">(1)</span><span class="v">x</span> <span class="op">+</span> <span class="v">b</span><span class="sup">(1)</span>)
+        <span class="op">+</span> <span class="v">b</span><span class="sup">(2)</span>
+        <span class="op">=</span>
+        (<span class="v">W</span><span class="sup">(2)</span><span class="v">W</span><span class="sup">(1)</span>)<span class="v">x</span> <span class="op">+</span> <span class="v">b</span>'
+        <span class="note">两个矩阵相乘还是一个矩阵 —— 一百层也只能等价于一层，永远只能画一条直线</span>
+      </p>
+
+      <p>
+        所以每层之间必须插一个<b>逐元素</b>的非线性函数。最常用的是 ReLU（简单、梯度不衰减），
+        经典的 sigmoid 和 tanh 现在主要出现在门控结构里。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Activation functions</span>
+          <div class="ctrl-row">
+            <button class="btn sm on" data-act="relu">ReLU</button>
+            <button class="btn sm" data-act="sigmoid">Sigmoid</button>
+            <button class="btn sm" data-act="tanh">Tanh</button>
+          </div>
+        </div>
+        <div class="panel-b curve-box">
+          <svg class="curve" id="actSvg" viewBox="0 0 520 260" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+
+      <p>
+        ReLU 的导数只有两个值：<b>z &gt; 0 时是 1，z &lt; 0 时是 0</b>。这让梯度在反向传播时
+        不会因为层层相乘而迅速消失（sigmoid 的导数最大只有 0.25，五层之后就是 0.001 量级）。
+      </p>
+    </section>
+
+    <!-- ============ 04 堆成网络 ============ -->
+    <section id="s4">
+      <div class="s-head"><span class="s-idx">04</span><h2>把它们堆起来：784 → 128 → 64 → 10</h2></div>
+
+      <p>
+        单个神经元只能画一条线，堆成层之后就能组合出任意复杂的形状。这里的结构是一个典型的
+        <b>多层感知机（MLP）</b>：两个隐藏层，最后接 10 个输出节点，分别对应数字 0~9。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Forward propagation</span>
+          <div class="ctrl-row">
+            <div class="num-btns" id="netnums"></div>
+          </div>
+        </div>
+        <div class="net-stage">
+          <canvas id="netcv"></canvas>
+        </div>
+        <div class="net-status">
+          <span class="ph" id="netPhase">待机</span>
+          <span id="netDesc">选一个样本，然后点运行</span>
+        </div>
+        <div class="net-summary">
+          <div>输入 <b>784</b></div>
+          <div>隐藏层 <b>128</b> · ReLU</div>
+          <div>隐藏层 <b>64</b> · ReLU</div>
+          <div>输出 <b>10</b> · Softmax</div>
+          <div class="win" id="sumPred">预测 —</div>
+        </div>
+        <div style="padding:0 18px 18px" class="ctrl-row">
+          <button class="btn primary" id="btnPlay">▶ 运行一次前向传播</button>
+          <button class="btn" id="btnStep">单步 →</button>
+          <button class="btn" id="btnSpeed">速度 1.0×</button>
+        </div>
+      </div>
+
+      <div class="bars" id="netBars" style="margin:18px 0 6px"></div>
+      <p style="font-size:11.5px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;margin-top:2px">
+        ↑ 输出层 10 个节点的 softmax 概率
+      </p>
+
+      <h3>三层各自在做什么</h3>
+      <ul>
+        <li><b>第一层（784 → 128）</b>：从像素里提取最基础的"笔画片段"——某处的一段横、一段竖、一个角。128 个神经元 = 128 种不同的局部模板。</li>
+        <li><b>第二层（128 → 64）</b>：把片段组合成结构。"左上角一撇 + 中间一横"开始有数字的意义。</li>
+        <li><b>输出层（64 → 10）</b>：把结构映射到类别打分。注意这里输出的是<b>打分（logit）</b>，不是概率，还要过 softmax。</li>
+      </ul>
+
+      <div class="aside">
+        <span class="lbl">关于本演示</span>
+        浏览器里没跑训练，权重按可解释的方式设定，才能毫秒级给出合理结果。真实的 MNIST 模型
+        是经过反向传播（第 06 节）在上万张图上磨出来的，但<b>前向传播的形状和这里完全一致</b>。
+      </div>
+    </section>
+
+    <!-- ============ 05 softmax ============ -->
+    <section id="s5">
+      <div class="s-head"><span class="s-idx">05</span><h2>Softmax：把打分变成概率</h2></div>
+
+      <p>
+        输出层的 10 个 logit 可以是任意实数，比如 <code>[-3.2, 1.1, 8.7, …]</code>。
+        要做分类，得把它们压成<b>加起来等于 1 的正数</b>：
+      </p>
+
+      <div class="formula">
+        <span class="v">p</span><span class="sub">i</span> <span class="op">=</span>
+        <span style="font-family:var(--math);font-size:1.25em">e</span><span class="sup">zᵢ</span>
+        <span class="op">/</span>
+        <span class="v">∑</span><span class="sub">j</span> <span style="font-family:var(--math);font-size:1.25em">e</span><span class="sup">zⱼ</span>
+        <span class="note">先指数放大差距，再归一化 —— 大者更大，小者趋近 0</span>
+      </div>
+
+      <p>
+        关键是那个 <b>e 的指数</b>：logit 相差 2，概率比就是 e² ≈ 7.4 倍。所以 softmax 不是"平均分配"，
+        而是<b>放大赢家</b>。拖下面三个 logit 试试，再调温度看看分布怎么变化：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h"><span><span class="dot"></span>Softmax playground</span><span id="sm-sum">Σ p = 1.000</span></div>
+        <div class="panel-b">
+          <div class="neu-rows" style="max-width:420px">
+            <div class="neu-row"><span class="neu-x">z₀</span><input type="range" id="lg0" min="-6" max="10" step="0.1" value="1.2"><span class="neu-w" id="lg0v">1.2</span></div>
+            <div class="neu-row"><span class="neu-x">z₁</span><input type="range" id="lg1" min="-6" max="10" step="0.1" value="7.4"><span class="neu-w" id="lg1v">7.4</span></div>
+            <div class="neu-row"><span class="neu-x">z₂</span><input type="range" id="lg2" min="-6" max="10" step="0.1" value="2.8"><span class="neu-w" id="lg2v">2.8</span></div>
+            <div class="neu-row"><span class="neu-x">T</span><input type="range" id="temp" min="0.2" max="4" step="0.05" value="1"><span class="neu-w" id="tempv">1.00</span></div>
+          </div>
+          <div class="bars" id="smBars" style="margin-top:22px"></div>
+        </div>
+      </div>
+
+      <p>
+        温度 <code>T</code> 写在指数里变成 <code>e^(z/T)</code>：T 越小分布越尖（更自信、更极端），
+        T 越大越平（更犹豫）。模型蒸馏里就是用大模型的高温输出当"软标签"来教小模型。
+      </p>
+    </section>
+
+    <!-- ============ 06 训练 ============ -->
+    <section id="s6">
+      <div class="s-head"><span class="s-idx">06</span><h2>它怎么学会的：损失与反向传播</h2></div>
+
+      <p>
+        上面的权重是给定的。真实训练里，权重一开始是随机的，网络输出一团糟。要让它变好，
+        就需要一个<b>衡量"错得多离谱"</b>的指标 —— 交叉熵：
+      </p>
+
+      <div class="formula">
+        <span class="v">L</span> <span class="op">=</span>
+        −<span class="v">log</span>(<span class="v">p</span><span class="sub">y</span>)
+        <span class="note">p_y 是网络给"正确答案"分配的概率。预测对了且自信 → L≈0；自信地错了 → L 爆炸</span>
+      </div>
+
+      <p>拖动滑块，看看正确答案的概率和损失的关系（注意曲线在低概率端有多陡）：</p>
+
+      <div class="panel">
+        <div class="panel-h"><span><span class="dot"></span>Cross-entropy</span><span id="ce-read">p = 0.96 → L = 0.041</span></div>
+        <div class="panel-b">
+          <div class="neu-row" style="grid-template-columns:64px 1fr 70px;max-width:460px">
+            <span class="neu-x">p_y</span>
+            <input type="range" id="py" min="0.01" max="0.999" step="0.001" value="0.96">
+            <span class="neu-w" id="pyv">0.960</span>
+          </div>
+          <svg class="curve" id="ceSvg" viewBox="0 0 520 190" preserveAspectRatio="xMidYMid meet" style="margin-top:14px"></svg>
+        </div>
+      </div>
+
+      <h3>梯度下降：往低处长</h3>
+      <p>
+        有了损失，就能算出<b>每个权重对损失的责任</b> —— 这就是梯度 ∂L/∂w。反向传播本质上是链式法则的高效实现：
+        从输出往回，一层层把误差分摊下去，然后所有参数朝梯度的反方向挪一小步。
+      </p>
+
+      <div class="formula">
+        <span class="v">w</span> <span class="op">←</span> <span class="v">w</span> <span class="op">−</span>
+        <span class="v">η</span> · <span style="font-family:var(--math)">∂L/∂w</span>
+        <span class="note">η 是学习率。太大震荡发散，太小爬得慢 —— 这是调参的第一个坎</span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span><span class="dot"></span>Training loss · 12 epochs</span>
+          <div class="ctrl-row"><button class="btn sm" id="btnTrain">重放</button></div>
+        </div>
+        <div class="panel-b">
+          <svg class="curve" id="lossSvg" viewBox="0 0 560 240" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+
+      <p>
+        曲线前几个 epoch 掉得很快，后面越来越平 —— 因为一开始几乎所有模板都是错的，
+        修正空间巨大；接近最优后，梯度本身变小了。这条曲线的形状几乎是深度学习训练的"指纹"。
+      </p>
+
+      <div class="aside">
+        <span class="lbl">容易踩的坑</span>
+        <b>梯度消失</b>：深层网络 + sigmoid，前面的层几乎收不到信号 → 用 ReLU、残差连接、归一化解决。<br>
+        <b>过拟合</b>：训练集损失一直降，验证集开始涨 → 正则化、Dropout、早停。
+      </div>
+    </section>
+
+    <!-- ============ 07 小结 ============ -->
+    <section id="s7">
+      <div class="s-head"><span class="s-idx">07</span><h2>全景回顾</h2></div>
+
+      <p>把整条链路串起来，一次识别就是这么走完的：</p>
+
+      <div class="flow">
+        <div class="flow-step"><div class="flow-n">1</div><div>
+          <div class="flow-t">读入图像</div>
+          <div class="flow-d">28×28 灰度图 → 归一化到 [0,1] → 展平成 <code>784</code> 维向量 <code>x</code></div></div></div>
+        <div class="flow-step"><div class="flow-n">2</div><div>
+          <div class="flow-t">第一层：线性 + ReLU</div>
+          <div class="flow-d"><code>a¹ = ReLU(W¹x + b¹)</code>，形状 <code>128</code>，从像素里抽局部特征</div></div></div>
+        <div class="flow-step"><div class="flow-n">3</div><div>
+          <div class="flow-t">第二层：组合特征</div>
+          <div class="flow-d"><code>a² = ReLU(W²a¹ + b²)</code>，形状 <code>64</code>，把笔画拼成结构</div></div></div>
+        <div class="flow-step"><div class="flow-n">4</div><div>
+          <div class="flow-t">输出层：打分</div>
+          <div class="flow-d"><code>z = W³a² + b³</code>，形状 <code>10</code>，对应 0~9 的未归一化分数</div></div></div>
+        <div class="flow-step"><div class="flow-n">5</div><div>
+          <div class="flow-t">Softmax：变成概率</div>
+          <div class="flow-d"><code>p = softmax(z)</code>，取 <code>argmax</code> 得到预测结果</div></div></div>
+        <div class="flow-step"><div class="flow-n">6</div><div>
+          <div class="flow-t">训练时：算损失、反向传播</div>
+          <div class="flow-d"><code>L = −log p_y</code> → 链式法则求梯度 → <code>w ← w − η·∂L/∂w</code>，重复成千上万次</div></div></div>
+      </div>
+
+      <h3>公式速查</h3>
+      <div class="cheat">
+        <div class="cheat-row"><span class="cheat-k">线性层</span><span class="cheat-v">z = W·x + b &nbsp;&nbsp;<span style="font-family:var(--sans);font-size:12px;color:var(--muted)">(m×n · n×1 → m×1)</span></span></div>
+        <div class="cheat-row"><span class="cheat-k">激活</span><span class="cheat-v">ReLU(z) = max(0, z)</span></div>
+        <div class="cheat-row"><span class="cheat-k">输出概率</span><span class="cheat-v">p<sub>i</sub> = e<sup>z<sub>i</sub></sup> ⁄ Σ<sub>j</sub> e<sup>z<sub>j</sub></sup></span></div>
+        <div class="cheat-row"><span class="cheat-k">交叉熵</span><span class="cheat-v">L = −Σ<sub>i</sub> y<sub>i</sub>·log(p<sub>i</sub>)</span></div>
+        <div class="cheat-row"><span class="cheat-k">参数更新</span><span class="cheat-v">w ← w − η·∂L/∂w</span></div>
+        <div class="cheat-row"><span class="cheat-k">参数量</span><span class="cheat-v">784×128 + 128×64 + 64×10 ≈ 109,000</span></div>
+      </div>
+
+      <div class="foot-nav">
+        <a href="../index.html">← 上一节：首页</a>
+        <a href="#" class="dim">下一章：CNN（待更新）→</a>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   工具
+   ============================================================ */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const clamp = (v,a,b)=>v<a?a:(v>b?b:v);
+const lerp = (a,b,t)=>a+(b-a)*t;
+
+/* ============================================================
+   数字样本生成：把字体渲染成 28×28 灰度矩阵（仿 MNIST）
+   ============================================================ */
+const N = 28, PIX = N*N;
+// 手写感更强的字体栈：Comic Sans 的数字形状最接近 MNIST 的书写风格
+const BASE_FONT = '700 245px "Comic Sans MS", "Segoe Script", "Segoe UI", cursive';
+const ALT_FONT  = '700 245px "Segoe UI", Arial, sans-serif';
+
+function makeDigit(digit, seed){
+  const HW = 420, S = 280, CELL = S/N;
+  const R = mulberry32(seed);
+
+  // 1) 高分辨率绘制
+  const hc = document.createElement('canvas');
+  hc.width = hc.height = HW;
+  const hg = hc.getContext('2d');
+  hg.fillStyle = '#000'; hg.fillRect(0,0,HW,HW);
+  hg.fillStyle = '#fff';
+  hg.textAlign = 'center'; hg.textBaseline = 'middle';
+  hg.font = (seed % 11 === 0) ? ALT_FONT : BASE_FONT;
+  hg.save();
+  hg.translate(HW/2 + (R()-0.5)*22, HW/2 + (R()-0.5)*14);
+  hg.rotate((R()-0.5)*0.22);
+  hg.scale(0.93 + R()*0.14, 0.93 + R()*0.14);
+  hg.fillText(String(digit), 0, 12);
+  hg.restore();
+
+  // 2) 找墨迹包围盒
+  const hd = hg.getImageData(0,0,HW,HW).data;
+  let minX=HW, minY=HW, maxX=-1, maxY=-1;
+  for(let y=0;y<HW;y++){
+    for(let x=0;x<HW;x++){
+      if(hd[(y*HW+x)*4] > 26){
+        if(x<minX) minX=x; if(x>maxX) maxX=x;
+        if(y<minY) minY=y; if(y>maxY) maxY=y;
+      }
+    }
+  }
+  if(maxX < minX){ minX=maxY=100; maxX=maxY=200; }
+  const bw = maxX-minX+1, bh = maxY-minY+1;
+
+  // 3) 缩放到 20×20 的内框并居中（MNIST 的预处理方式）
+  const target = 200;
+  const k = target / Math.max(bw, bh);
+  const dw = bw*k, dh = bh*k;
+  const fc = document.createElement('canvas');
+  fc.width = fc.height = S;
+  const fg = fc.getContext('2d');
+  fg.fillStyle = '#000'; fg.fillRect(0,0,S,S);
+  fg.imageSmoothingEnabled = true;
+  fg.drawImage(hc, minX, minY, bw, bh, (S-dw)/2, (S-dh)/2, dw, dh);
+
+  // 4) 下采样成 28×28
+  const fd = fg.getImageData(0,0,S,S).data;
+  const px = new Float32Array(PIX);
+  for(let y=0;y<N;y++){
+    for(let x=0;x<N;x++){
+      let sum = 0;
+      for(let j=0;j<CELL;j++){
+        const row = (y*CELL+j)*S;
+        for(let i=0;i<CELL;i++) sum += fd[(row + x*CELL + i)*4];
+      }
+      px[y*N+x] = sum/(CELL*CELL)/255;
+    }
+  }
+  return px;
+}
+
+// 预生成 10 个模板 + 10 个"输入样本"（不同 seed，形状略有差异）
+const TPL = [], SAMPLES = {};
+for(let d=0; d<10; d++){
+  TPL.push(makeDigit(d, 9173 + d*311));
+  SAMPLES[d] = [ makeDigit(d, 41 + d*97), makeDigit(d, 8801 + d*53) ];
+}
+
+function zeroMeanUnit(v){
+  let m = 0; for(let i=0;i<v.length;i++) m += v[i];
+  m /= v.length;
+  const z = new Float32Array(v.length);
+  let n = 0;
+  for(let i=0;i<v.length;i++){ z[i] = v[i]-m; n += z[i]*z[i]; }
+  n = Math.sqrt(n) || 1;
+  for(let i=0;i<v.length;i++) z[i] /= n;
+  return z;
+}
+const TPLN = TPL.map(zeroMeanUnit);
+
+/* ---- 一个"迷你 MLP"：中间层用固定随机权重，输出层用模板相似度 ---- */
+const W1 = (()=>{ const R = mulberry32(20251018); const a = new Float32Array(128*PIX);
+  for(let i=0;i<a.length;i++) a[i] = (R()-0.5)*0.115; return a; })();
+const B1 = (()=>{ const R = mulberry32(777); const a = new Float32Array(128);
+  for(let i=0;i<128;i++) a[i] = -0.012 - R()*0.02; return a; })();
+const W2 = (()=>{ const R = mulberry32(31415); const a = new Float32Array(64*128);
+  for(let i=0;i<a.length;i++) a[i] = (R()-0.5)*0.34; return a; })();
+const B2 = (()=>{ const R = mulberry32(2718); const a = new Float32Array(64);
+  for(let i=0;i<64;i++) a[i] = -0.02 - R()*0.03; return a; })();
+
+function forward(px){
+  // layer 1
+  const a1 = new Float32Array(128);
+  for(let i=0;i<128;i++){
+    let s = B1[i], off = i*PIX;
+    for(let j=0;j<PIX;j++) s += W1[off+j]*px[j];
+    a1[i] = s > 0 ? s : 0;
+  }
+  // layer 2
+  const a2 = new Float32Array(64);
+  for(let i=0;i<64;i++){
+    let s = B2[i], off = i*128;
+    for(let j=0;j<128;j++) s += W2[off+j]*a1[j];
+    a2[i] = s > 0 ? s : 0;
+  }
+  // output: 与 10 个模板的方向余弦 × 增益
+  const xn = zeroMeanUnit(px);
+  const logits = new Float32Array(10);
+  for(let d=0; d<10; d++){
+    let s = 0; const t = TPLN[d];
+    for(let j=0;j<PIX;j++) s += xn[j]*t[j];
+    logits[d] = s * 11.5;
+  }
+  return { a1, a2, logits, probs: softmax(logits, 1) };
+}
+function softmax(z, T){
+  const m = Math.max.apply(null, z);
+  let s = 0; const e = new Float32Array(z.length);
+  for(let i=0;i<z.length;i++){ e[i] = Math.exp((z[i]-m)/T); s += e[i]; }
+  for(let i=0;i<z.length;i++) e[i] /= s;
+  return e;
+}
+
+/* ============================================================
+   01 · 像素网格
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('gridcv');
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+  const CS = 280, CELL = CS/N;
+  let current = new Float32Array(SAMPLES[3][0]);
+  let hover = null;
+  const off = document.createElement('canvas'); off.width = off.height = N;
+  const octx = off.getContext('2d');
+
+  function paint(){
+    const id = octx.createImageData(N,N);
+    for(let i=0;i<PIX;i++){
+      const v = current[i];
+      id.data[i*4]   = 255 - v*225;
+      id.data[i*4+1] = 255 - v*214;
+      id.data[i*4+2] = 255 - v*198;
+      id.data[i*4+3] = 255;
+    }
+    octx.putImageData(id,0,0);
+
+    ctx.clearRect(0,0,CS,CS);
+    ctx.imageSmoothingEnabled = false;
+    // 底色
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0,0,CS,CS);
+    ctx.drawImage(off,0,0,CS,CS);
+    // 网格线
+    ctx.strokeStyle = 'rgba(208,213,221,.45)'; ctx.lineWidth = 1;
+    for(let i=1;i<N;i++){
+      const p = i*CELL + .5;
+      ctx.beginPath(); ctx.moveTo(p,0); ctx.lineTo(p,CS); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,p); ctx.lineTo(CS,p); ctx.stroke();
+    }
+    if(hover){
+      ctx.strokeStyle = 'rgba(79,70,229,.95)'; ctx.lineWidth = 2;
+      ctx.strokeRect(hover.x*CELL+1, hover.y*CELL+1, CELL-2, CELL-2);
+    }
+  }
+
+  cv.addEventListener('mousemove', e=>{
+    const r = cv.getBoundingClientRect();
+    const x = Math.floor((e.clientX-r.left)/r.width*N);
+    const y = Math.floor((e.clientY-r.top)/r.height*N);
+    if(x<0||y<0||x>=N||y>=N) return;
+    hover = {x,y};
+    const idx = y*N+x;
+    document.getElementById('r-coord').textContent = x+', '+y;
+    document.getElementById('r-idx').textContent = idx;
+    document.getElementById('r-val').textContent = current[idx].toFixed(3);
+    paint();
+  });
+  cv.addEventListener('mouseleave', ()=>{ hover = null; paint(); });
+
+  // 数字按钮
+  const box = document.getElementById('s1nums');
+  for(let d=0; d<10; d++){
+    const b = document.createElement('button');
+    b.className = 'btn sm' + (d===3?' on':'');
+    b.textContent = d;
+    b.onclick = ()=>{
+      [...box.children].forEach(c=>c.classList.remove('on'));
+      b.classList.add('on');
+      current = new Float32Array(SAMPLES[d][0]);
+      let bi = 0, bv = -1;
+      for(let i=0;i<PIX;i++) if(current[i] > bv){ bv = current[i]; bi = i; }
+      hover = { x: bi%N, y: Math.floor(bi/N) };
+      document.getElementById('r-coord').textContent = hover.x+', '+hover.y;
+      document.getElementById('r-idx').textContent = bi;
+      document.getElementById('r-val').textContent = current[bi].toFixed(3);
+      paint(); renderFlat(1);
+    };
+    box.appendChild(b);
+  }
+
+  // 展平动画
+  const fcv = document.getElementById('flatcv');
+  const fctx = fcv.getContext('2d');
+  function renderFlat(prog){
+    fctx.clearRect(0,0,784,46);
+    const lim = Math.floor(prog*784);
+    for(let i=0;i<784;i++){
+      if(i>=lim) continue;
+      const v = current[i];
+      if(v < 0.02) continue;
+      const h = 2 + v*42;
+      fctx.fillStyle = 'rgba(79,70,229,'+(0.18+v*0.82).toFixed(3)+')';
+      fctx.fillRect(i, 46-h, 1, h);
+    }
+    if(prog>0 && prog<1){
+      fctx.fillStyle = 'rgba(79,70,229,.55)';
+      fctx.fillRect(lim,0,1,46);
+    }
+  }
+  function drawFlat(prog){ renderFlat(prog); }
+
+  let flatAnim = null;
+  document.getElementById('btnFlat').onclick = ()=>{
+    if(flatAnim) cancelAnimationFrame(flatAnim);
+    const t0 = performance.now();
+    (function step(){
+      const p = Math.min((performance.now()-t0)/1100, 1);
+      renderFlat(p);
+      if(p<1) flatAnim = requestAnimationFrame(step);
+    })();
+  };
+
+  // 默认定位到墨迹最重的像素，让右侧读数不至于全空
+  (function(){
+    let bi = 0, bv = -1;
+    for(let i=0;i<PIX;i++) if(current[i] > bv){ bv = current[i]; bi = i; }
+    hover = { x: bi%N, y: Math.floor(bi/N) };
+    document.getElementById('r-coord').textContent = hover.x+', '+hover.y;
+    document.getElementById('r-idx').textContent = bi;
+    document.getElementById('r-val').textContent = current[bi].toFixed(3);
+  })();
+  paint(); renderFlat(1);
+})();
+
+/* ============================================================
+   02 · 单神经元
+   ============================================================ */
+(function(){
+  const rows = document.getElementById('neuRows');
+  if(!rows) return;
+  const xs = [0.92, 0.35, 0.78, 0.12];
+  const ws = [0.80, -0.45, 0.62, 0.20];
+
+  xs.forEach((x,i)=>{
+    const row = document.createElement('div');
+    row.className = 'neu-row';
+    row.innerHTML =
+      '<span class="neu-x">x'+'<sub>'+(i+1)+'</sub> = '+x.toFixed(2)+'</span>'+
+      '<input type="range" min="-1.5" max="1.5" step="0.05" value="'+ws[i]+'" data-i="'+i+'">'+
+      '<span class="neu-w" id="wv'+i+'">'+ws[i].toFixed(2)+'</span>';
+    rows.appendChild(row);
+  });
+
+  function update(){
+    let z = 0;
+    for(let i=0;i<4;i++){
+      z += xs[i]*ws[i];
+      document.getElementById('wv'+i).textContent = 'w'+(i+1)+' = '+(ws[i]>=0?'+':'')+ws[i].toFixed(2);
+    }
+    const a = Math.max(0, z);
+    document.getElementById('neu-z').textContent = z.toFixed(2);
+    document.getElementById('neu-a').textContent = a.toFixed(2);
+    const big = document.getElementById('neu-a');
+    big.style.color = a>0.01 ? 'var(--cyan)' : 'rgba(102,112,133,.55)';
+    big.style.textShadow = a>0.01 ? '0 0 22px rgba(79,70,229,.5)' : 'none';
+    document.getElementById('neu-formula-live').textContent =
+      'z = '+z.toFixed(2)+'   →   a = '+a.toFixed(2);
+  }
+
+  rows.addEventListener('input', e=>{
+    const i = +e.target.dataset.i;
+    if(isNaN(i)) return;
+    ws[i] = +e.target.value;
+    update();
+  });
+  update();
+})();
+
+/* ============================================================
+   03 · 激活函数曲线
+   ============================================================ */
+(function(){
+  const svg = document.getElementById('actSvg');
+  if(!svg) return;
+  const X0=46, X1=494, Y0=222, Y1=26;
+  const xmin=-3.1, xmax=3.1, ymin=-1.35, ymax=3.2;
+  const sx = v => X0 + (v-xmin)/(xmax-xmin)*(X1-X0);
+  const sy = v => Y0 + (v-ymin)/(ymax-ymin)*(Y1-Y0);
+
+  const F = {
+    relu: {
+      f: v => Math.max(0,v),
+      label: 'ReLU(z) = max(0, z)',
+      color: '#4F46E5',
+      note: '负半轴全为 0 → 稀疏激活，梯度为 1 不衰减'
+    },
+    sigmoid: {
+      f: v => 1/(1+Math.exp(-v)),
+      label: 'σ(z) = 1 / (1 + e⁻ᶻ)',
+      color: '#7C3AED',
+      note: '把实数压到 (0,1)，像概率；但两端梯度趋近 0'
+    },
+    tanh: {
+      f: v => Math.tanh(v),
+      label: 'tanh(z) = (eᶻ − e⁻ᶻ) / (eᶻ + e⁻ᶻ)',
+      color: '#E05252',
+      note: '零中心化的 sigmoid，值域 (−1, 1)'
+    }
+  };
+
+  function draw(key){
+    const cfg = F[key];
+    let g = '';
+    // 网格
+    for(let v=-3; v<=3; v++){
+      g += '<line x1="'+sx(v)+'" y1="'+Y1+'" x2="'+sx(v)+'" y2="'+Y0+'" stroke="rgba(208,213,221,.06)"/>';
+    }
+    for(let v=-1; v<=3; v++){
+      g += '<line x1="'+X0+'" y1="'+sy(v)+'" x2="'+X1+'" y2="'+sy(v)+'" stroke="rgba(208,213,221,.06)"/>';
+    }
+    // 轴
+    g += '<line x1="'+X0+'" y1="'+sy(0)+'" x2="'+X1+'" y2="'+sy(0)+'" stroke="rgba(208,213,221,.28)" stroke-width="1"/>';
+    g += '<line x1="'+sx(0)+'" y1="'+Y1+'" x2="'+sx(0)+'" y2="'+Y0+'" stroke="rgba(208,213,221,.28)" stroke-width="1"/>';
+    g += '<text class="curve-lbl" x="'+(X1-4)+'" y="'+(sy(0)-10)+'" text-anchor="end">z</text>';
+    g += '<text class="curve-lbl" x="'+(sx(0)+8)+'" y="'+(Y1+12)+'">f(z)</text>';
+
+    // 曲线采样
+    const pts = [];
+    for(let i=0;i<=240;i++){
+      const v = xmin + (xmax-xmin)*i/240;
+      pts.push([sx(v), sy(cfg.f(v))]);
+    }
+    const d = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' ');
+
+    svg.innerHTML = g +
+      '<path d="'+d+'" fill="none" stroke="'+cfg.color+'" stroke-width="2.4" '+
+      'stroke-linecap="round" stroke-dasharray="2400" stroke-dashoffset="2400">'+
+      '<animate attributeName="stroke-dashoffset" from="2400" to="0" dur="860ms" fill="freeze"/>'+
+      '</path>'+
+      '<text class="curve-lbl" x="'+X0+'" y="'+(Y1-6)+'" fill="'+cfg.color+'">'+cfg.label+'</text>'+
+      '<text class="curve-lbl" x="'+X0+'" y="'+(Y0+22)+'">'+cfg.note+'</text>';
+
+    // 原点标记
+    svg.innerHTML += '<circle cx="'+sx(0)+'" cy="'+sy(0)+'" r="3" fill="'+cfg.color+'"/>';
+  }
+
+  document.querySelectorAll('[data-act]').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('[data-act]').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      draw(b.dataset.act);
+    };
+  });
+  draw('relu');
+})();
+
+/* ============================================================
+   04 · 前向传播主画布
+   ============================================================ */
+const NET = (function(){
+  const cv = document.getElementById('netcv');
+  if(!cv) return null;
+  const W = 820, H = 390;
+  let ctx = cv.getContext('2d');
+
+  const LAYOUT = {
+    grid: { x: 26, y: 148, s: 92 },
+    h1: { x: 256, n: 14, y0: 32, y1: 358, r: 6.2 },
+    h2: { x: 484, n: 12, y0: 64, y1: 326, r: 7.2 },
+    out:{ x: 674, n: 10, y0: 78, y1: 312, r: 9.6 }
+  };
+
+  function nodePos(L){
+    const arr=[];
+    for(let i=0;i<L.n;i++){
+      const t = L.n===1 ? 0.5 : i/(L.n-1);
+      arr.push({ x: L.x, y: lerp(L.y0, L.y1, t) });
+    }
+    return arr;
+  }
+
+  // 输入网格采样点（从网格内发散出去）
+  const srcPts = [];
+  (function(){
+    const R = mulberry32(99);
+    const g = LAYOUT.grid;
+    for(let i=0;i<12;i++){
+      srcPts.push({
+        x: g.x + 10 + R()*(g.s-20),
+        y: g.y + 10 + R()*(g.s-20)
+      });
+    }
+  })();
+
+  const P1 = nodePos(LAYOUT.h1);
+  const P2 = nodePos(LAYOUT.h2);
+  const P3 = nodePos(LAYOUT.out);
+
+  const L1 = [], L2 = [], L3 = [];
+  for(const s of srcPts) for(const t of P1) L1.push({x1:s.x,y1:s.y,x2:t.x,y2:t.y,d:Math.random()*0.3});
+  for(const s of P1) for(const t of P2) L2.push({x1:s.x,y1:s.y,x2:t.x,y2:t.y,d:Math.random()*0.3});
+  for(const s of P2) for(const t of P3) L3.push({x1:s.x,y1:s.y,x2:t.x,y2:t.y,d:Math.random()*0.3});
+
+  // 时序（ms）
+  const T = { scan:650, p1:1500, a1:1850, p2:2700, a2:3050, p3:3900, a3:4250, bars:4900, done:5300 };
+
+  let st = {
+    sample: 3, sampleIdx: 0,
+    t: 0, playing: false, speed: 1,
+    data: null, grid: null, phaseKey: ''
+  };
+
+  const gcv = document.createElement('canvas'); gcv.width = gcv.height = N;
+  const gctx = gcv.getContext('2d');
+
+  function paintInput(px){
+    const id = gctx.createImageData(N,N);
+    for(let i=0;i<PIX;i++){
+      const v = px[i];
+      id.data[i*4]   = 255 - v*225;
+      id.data[i*4+1] = 255 - v*214;
+      id.data[i*4+2] = 255 - v*198;
+      id.data[i*4+3] = 255;
+    }
+    gctx.putImageData(id,0,0);
+  }
+
+  function load(d, idx){
+    st.sample = d; st.sampleIdx = idx;
+    const px = SAMPLES[d][idx % SAMPLES[d].length];
+    st.grid = px;
+    st.data = forward(px);
+    st.t = 0; st.playing = false;
+    paintInput(px);
+    updateBars(0);
+    setPhase('READY', '样本 '+d+' 已载入 · 点「运行」开始前向传播');
+  }
+
+  /* ---------- 绘制 ---------- */
+  function box(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+
+  function draw(now){
+    const t = st.t;
+    ctx.clearRect(0,0,W,H);
+
+    // ---- 输入网格 ----
+    const g = LAYOUT.grid;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 0.55;
+    ctx.shadowColor = 'rgba(79,70,229,.5)'; ctx.shadowBlur = 22;
+    ctx.drawImage(gcv, g.x, g.y, g.s, g.s);
+    ctx.restore();
+
+    ctx.strokeStyle = 'rgba(79,70,229,.18)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(g.x-0.5, g.y-0.5, g.s+1, g.s+1);
+
+    // 扫描线
+    if(t < T.scan){
+      const p = clamp(t/T.scan, 0, 1);
+      const sx = g.x + p*g.s;
+      const grad = ctx.createLinearGradient(sx-28,0,sx+2,0);
+      grad.addColorStop(0,'rgba(79,70,229,0)');
+      grad.addColorStop(1,'rgba(79,70,229,.55)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(sx-28, g.y, 30, g.s);
+      ctx.strokeStyle = 'rgba(67,56,202,.9)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(sx, g.y-6); ctx.lineTo(sx, g.y+g.s+6); ctx.stroke();
+    }
+
+    // 标签
+    ctx.font = '500 11px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(102,112,133,.9)';
+    ctx.fillText('INPUT', g.x + g.s/2, g.y - 14);
+    ctx.fillStyle = 'rgba(79,70,229,.85)';
+    ctx.fillText('28×28 = 784', g.x + g.s/2, g.y + g.s + 20);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(102,112,133,.75)';
+    ctx.fillText('HIDDEN 128', P1[0].x - 46, P1[0].y - 26);
+    ctx.fillText('HIDDEN 64', P2[0].x - 42, P2[0].y - 24);
+    ctx.fillStyle = 'rgba(79,70,229,.8)';
+    ctx.fillText('OUTPUT 10', P3[0].x - 44, P3[0].y - 28);
+
+    // ---- 连线 ----
+    function edges(lines, alphaBase, glow){
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(79,70,229,'+alphaBase.toFixed(3)+')';
+      ctx.beginPath();
+      for(const L of lines){
+        ctx.moveTo(L.x1, L.y1); ctx.lineTo(L.x2, L.y2);
+      }
+      ctx.stroke();
+    }
+    edges(L1, 0.20);
+    edges(L2, 0.16);
+    edges(L3, 0.13);
+
+    // ---- 脉冲 ----
+    function pulses(lines, prog, color){
+      if(prog <= 0) return;
+      for(const L of lines){
+        const lt = (prog - L.d) / 0.72;
+        if(lt <= 0 || lt >= 1) continue;
+        const x = lerp(L.x1, L.x2, lt), y = lerp(L.y1, L.y2, lt);
+        ctx.fillStyle = 'rgba(79,70,229,.16)';
+        ctx.beginPath(); ctx.arc(x,y,3.6,0,6.2832); ctx.fill();
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(x,y,1.5,0,6.2832); ctx.fill();
+        // 拖尾
+        const lt2 = Math.max(0, lt-0.10);
+        ctx.strokeStyle = 'rgba(79,70,229,.35)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(lerp(L.x1,L.x2,lt2), lerp(L.y1,L.y2,lt2));
+        ctx.lineTo(x,y);
+        ctx.stroke();
+      }
+    }
+
+    const p1 = clamp((t-540)/(T.p1-540), 0, 1.35);
+    const p2 = clamp((t-1720)/(T.p2-1720), 0, 1.35);
+    const p3 = clamp((t-2900)/(T.p3-2900), 0, 1.35);
+    pulses(L1, p1, 'rgba(67,56,202,.95)');
+    pulses(L2, p2, 'rgba(67,56,202,.95)');
+    pulses(L3, p3, 'rgba(67,56,202,.95)');
+
+    // ---- 节点 ----
+    function actLevel(values, i, maxV){
+      const v = values ? values[i]/maxV : 0;
+      return clamp(v, 0, 1);
+    }
+    function norm(arr){
+      let m = 0;
+      for(let i=0;i<arr.length;i++) if(arr[i]>m) m = arr[i];
+      return m || 1;
+    }
+
+    const lum1 = st.data ? clamp((t-T.p1+250)/450, 0, 1) : 0;
+    const lum2 = st.data ? clamp((t-T.p2+250)/450, 0, 1) : 0;
+    const lum3 = st.data ? clamp((t-T.p3+250)/450, 0, 1) : 0;
+    const m1 = st.data ? norm(st.data.a1) : 1;
+    const m2 = st.data ? norm(st.data.a2) : 1;
+
+    const breath = 0.5 + 0.5*Math.sin(now*0.0022);
+
+    function drawNodes(pts, values, maxV, lum, baseR, labels){
+      for(let i=0;i<pts.length;i++){
+        const p = pts[i];
+        let v = 0;
+        if(values && lum > 0){
+          // 均匀抽样取值
+          const idx = Math.floor(i * values.length / pts.length);
+          v = clamp(Math.pow(values[idx]/maxV, 0.95), 0, 1) * lum;
+        }
+        const idle = 0.16 + 0.07*breath;
+        const lv = Math.max(idle, v);
+        // 外晕
+        ctx.fillStyle = 'rgba(79,70,229,'+(0.03 + lv*0.09).toFixed(3)+')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, baseR + 6 + lv*5, 0, 6.2832); ctx.fill();
+        // 主体
+        ctx.fillStyle = 'rgba('+
+          Math.round(255 - lv*176)+','+
+          Math.round(255 - lv*185)+','+
+          Math.round(255 - lv*26)+','+
+          '1)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, baseR, 0, 6.2832); ctx.fill();
+        // 描边
+        ctx.strokeStyle = 'rgba(79,70,229,'+(0.25 + lv*0.7).toFixed(3)+')';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, baseR, 0, 6.2832); ctx.stroke();
+
+        if(labels){
+          ctx.font = '500 12px ui-monospace, Consolas, monospace';
+          ctx.textAlign = 'left';
+          ctx.fillStyle = 'rgba(180,200,220,.65)';
+          ctx.fillText(labels[i], p.x + baseR + 10, p.y + 4);
+        }
+      }
+    }
+
+    drawNodes(P1, st.data && st.data.a1, m1, lum1, LAYOUT.h1.r, null);
+    drawNodes(P2, st.data && st.data.a2, m2, lum2, LAYOUT.h2.r, null);
+
+    // 输出层：节点 + 类别 + 概率
+    const winD = st.data ? st.data.probs.indexOf(Math.max.apply(null, [...st.data.probs])) : -1;
+    const maxL = st.data ? Math.max.apply(null, [...st.data.logits]) : 0;
+    const minL = st.data ? Math.min.apply(null, [...st.data.logits]) : 0;
+
+    for(let i=0;i<P3.length;i++){
+      const p = P3[i];
+      let v = 0;
+      if(st.data && lum3 > 0){
+        v = clamp((st.data.logits[i]-minL)/((maxL-minL)||1), 0, 1) * lum3;
+      }
+      const lv = Math.max(0.14 + 0.06*breath, v);
+      const isWin = (i === winD) && lum3 > 0.85;
+
+      ctx.fillStyle = 'rgba(79,70,229,'+(0.05 + lv*0.14).toFixed(3)+')';
+      ctx.beginPath(); ctx.arc(p.x, p.y, LAYOUT.out.r + 5 + lv*6, 0, 6.2832); ctx.fill();
+
+      ctx.fillStyle = 'rgba('+Math.round(255-v*176)+','+Math.round(255-v*185)+','+Math.round(255-v*26)+',1)';
+      ctx.beginPath(); ctx.arc(p.x, p.y, LAYOUT.out.r, 0, 6.2832); ctx.fill();
+
+      ctx.strokeStyle = isWin
+        ? 'rgba(67,56,202,'+(0.55+lum3*0.45).toFixed(2)+')'
+        : 'rgba(79,70,229,'+(0.22+v*0.6).toFixed(2)+')';
+      ctx.lineWidth = isWin ? 2 : 1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, LAYOUT.out.r, 0, 6.2832); ctx.stroke();
+
+      if(isWin){
+        ctx.strokeStyle = 'rgba(79,70,229,'+(0.22*breath+0.12).toFixed(2)+')';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, LAYOUT.out.r + 8 + breath*4, 0, 6.2832); ctx.stroke();
+      }
+
+      // 类别编号
+      ctx.textAlign = 'left';
+      ctx.font = isWin ? '700 13.5px ui-monospace, Consolas, monospace' : '500 12px ui-monospace, Consolas, monospace';
+      ctx.fillStyle = isWin ? 'rgba(79,70,229,.98)' : 'rgba(102,112,133,'+(0.55+lum3*0.4).toFixed(2)+')';
+      ctx.fillText(String(i), p.x + LAYOUT.out.r + 12, p.y + 4);
+
+      // 概率
+      if(st.data && lum3 > 0.35){
+        ctx.font = isWin ? '700 12px ui-monospace, Consolas, monospace' : '500 11px ui-monospace, Consolas, monospace';
+        ctx.fillStyle = isWin ? 'rgba(67,56,202,'+(0.55+lum3*0.45).toFixed(2)+')' : 'rgba(102,112,133,'+(0.5*lum3).toFixed(2)+')';
+        ctx.fillText((st.data.probs[i]*100).toFixed(1)+'%', p.x + LAYOUT.out.r + (isWin?34:30), p.y + 4);
+      }
+    }
+
+    // 顶部结论
+    if(t > T.a3 && st.data && winD >= 0){
+      const p = clamp((t-T.a3)/420, 0, 1);
+      ctx.globalAlpha = p;
+      ctx.textAlign = 'left';
+      ctx.font = '600 12px ui-monospace, Consolas, monospace';
+      ctx.fillStyle = 'rgba(79,70,229,.9)';
+      ctx.fillText('argmax = '+winD, 672 + LAYOUT.out.r + 46, 46);
+      ctx.font = '500 10.5px ui-monospace, Consolas, monospace';
+      ctx.fillStyle = 'rgba(102,112,133,.9)';
+      ctx.fillText('置信度 '+(st.data.probs[winD]*100).toFixed(1)+'%', 672 + LAYOUT.out.r + 46, 62);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ---------- 阶段文案 ---------- */
+  const PHASES = [
+    { t: 0,       key:'READY',  name:'READY',      desc:'样本已载入，等待运行' },
+    { t: 1,       key:'READ',   name:'READ',       desc:'读入 28×28 灰度矩阵，归一化到 [0,1]' },
+    { t: T.scan,  key:'FLAT',   name:'FLATTEN',    desc:'按行展开成 784 维向量 x，送入输入层' },
+    { t: T.p1,    key:'L1',     name:'LAYER 1',    desc:'W¹x + b¹ → ReLU → 128 个激活值，提取局部笔画' },
+    { t: T.p2,    key:'L2',     name:'LAYER 2',    desc:'W²a¹ + b² → ReLU → 64 个激活值，组合成结构' },
+    { t: T.p3,    key:'L3',     name:'LOGITS',     desc:'W³a² + b³ → 10 个类别打分（未归一化）' },
+    { t: T.a3+300,key:'SM',     name:'SOFTMAX',    desc:'指数归一化成概率分布，取最大者为预测' },
+    { t: T.done,  key:'DONE',   name:'DONE',       desc:'前向传播完成' }
+  ];
+  function setPhase(name, desc){
+    document.getElementById('netPhase').textContent = name;
+    document.getElementById('netDesc').textContent = desc;
+  }
+  function syncPhase(){
+    let cur = PHASES[0];
+    for(const p of PHASES) if(st.t >= p.t) cur = p;
+    if(cur.key !== st.phaseKey){
+      st.phaseKey = cur.key;
+      setPhase(cur.name, cur.desc);
+      if(cur.key==='SM' || cur.key==='DONE') updateBars(1);
+    }
+  }
+
+  /* ---------- 柱状图 ---------- */
+  const barsBox = document.getElementById('netBars');
+  const barEls = [];
+  for(let i=0;i<10;i++){
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    col.innerHTML =
+      '<div class="bar-val" data-v>0.0</div>'+
+      '<div class="bar-track"><div class="bar-fill"></div></div>'+
+      '<div class="bar-lbl">'+i+'</div>';
+    barsBox.appendChild(col);
+    barEls.push({ fill: col.querySelector('.bar-fill'), val: col.querySelector('[data-v]'), col });
+  }
+  let barsShown = -1;
+  function updateBars(factor){
+    if(!st.data) return;
+    const ps = [...st.data.probs];
+    const win = ps.indexOf(Math.max.apply(null, ps));
+    for(let i=0;i<10;i++){
+      const p = ps[i];
+      barEls[i].fill.style.height = (p*100*factor).toFixed(2)+'%';
+      barEls[i].val.textContent = factor>0.5 ? (p*100).toFixed(1)+'%' : '';
+      barEls[i].fill.classList.toggle('win', i===win && factor>0.5);
+    }
+    const sum = document.getElementById('sumPred');
+    if(factor > 0.5){
+      sum.innerHTML = '预测 <b style="color:var(--cyan)">'+(win>=0?win:'—')+'</b> · 置信度 '+(ps[win]*100).toFixed(1)+'%';
+    } else {
+      sum.innerHTML = '预测 <b>—</b>';
+    }
+  }
+
+  /* ---------- 控制 ---------- */
+  const btnPlay = document.getElementById('btnPlay');
+  const btnStep = document.getElementById('btnStep');
+  const btnSpeed = document.getElementById('btnSpeed');
+  const speeds = [1, 0.5, 1.5, 0.25];
+  let si = 0;
+
+  btnPlay.onclick = ()=>{
+    if(st.playing) return;
+    if(st.t >= T.done) st.t = 0;
+    st.playing = true;
+    btnPlay.textContent = '■ 运行中';
+  };
+  btnStep.onclick = ()=>{
+    const marks = [1, T.scan, T.p1, T.p2, T.p3, T.a3+300, T.done];
+    const next = marks.find(m=>m > st.t + 8);
+    st.t = next === undefined ? T.done : next;
+    st.playing = false;
+    syncPhase();
+    if(st.t >= T.done){
+      setPhase('DONE','前向传播完成 · 可以换个样本再试');
+      updateBars(1);
+    }
+    btnPlay.textContent = '▶ 运行一次前向传播';
+  };
+  btnSpeed.onclick = ()=>{
+    si = (si+1) % speeds.length;
+    st.speed = speeds[si];
+    btnSpeed.textContent = '速度 '+st.speed.toFixed(2).replace(/0$/,'')+'×';
+  };
+
+  // 数字按钮
+  const nums = document.getElementById('netnums');
+  for(let d=0; d<10; d++){
+    const b = document.createElement('button');
+    b.className = 'btn sm' + (d===3?' on':'');
+    b.textContent = d;
+    b.onclick = ()=>{
+      [...nums.children].forEach(c=>c.classList.remove('on'));
+      b.classList.add('on');
+      load(d, Math.floor(Math.random()*2));
+      st.phaseKey='';
+    };
+    nums.appendChild(b);
+  }
+
+  // 尺寸自适应：跟随父容器宽度（不用 window.resize，避免布局完成后宽度仍不准）
+  let lastW = 0;
+  function fit(){
+    const stage = cv.parentElement;
+    if(!stage) return;
+    const cssW = Math.round(stage.getBoundingClientRect().width);
+    if(!cssW) return;
+    lastW = cssW;
+    const dpr = Math.min(window.devicePixelRatio||1, 2);
+    const cssH = cssW * H / W;
+    cv.style.height = cssH + 'px';
+    cv.width = Math.round(cssW*dpr);
+    cv.height = Math.round(cssH*dpr);
+    ctx = cv.getContext('2d');
+    const k = dpr * cssW / W;
+    ctx.setTransform(k,0,0,k,0,0);
+  }
+  fit();
+  requestAnimationFrame(fit);
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(()=>{
+      const w = Math.round(cv.parentElement.getBoundingClientRect().width);
+      if(w && w !== lastW) fit();
+    });
+    ro.observe(cv.parentElement);
+  }
+  window.addEventListener('resize', fit);
+
+  /* ---------- 主循环 ---------- */
+  let last = performance.now();
+  function loop(now){
+    const dt = Math.min(now-last, 64);
+    last = now;
+    if(st.playing){
+      st.t += dt * st.speed;
+      if(st.t >= T.done){
+        st.t = T.done;
+        st.playing = false;
+        btnPlay.textContent = '▶ 重新运行';
+        st.phaseKey = '';
+        setPhase('DONE','前向传播完成 · 点「单步」可以倒回去一步步看');
+        updateBars(1);
+      }
+    }
+    syncPhase();
+    // 柱状图跟随
+    if(st.data){
+      const f = st.t >= T.done ? 1 : clamp((st.t - (T.a3+200)) / 700, 0, 1);
+      const q = Math.round(f*20)/20;
+      if(q !== barsShown){ barsShown = q; updateBars(q); }
+    }
+    draw(now);
+    requestAnimationFrame(loop);
+  }
+  load(3, 0);
+  requestAnimationFrame(loop);
+
+  return { load, isPlaying: ()=>st.playing };
+})();
+
+/* ============================================================
+   05 · Softmax 实验台
+   ============================================================ */
+(function(){
+  const box = document.getElementById('smBars');
+  if(!box) return;
+  const ids = ['lg0','lg1','lg2'];
+  const vals = [1.2, 7.4, 2.8];
+  const bars = [];
+  for(let i=0;i<3;i++){
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    col.innerHTML = '<div class="bar-val" data-v></div><div class="bar-track" style="height:90px"><div class="bar-fill"></div></div>'+
+      '<div class="bar-lbl">z'+i+'</div>';
+    box.appendChild(col);
+    bars.push({ fill: col.querySelector('.bar-fill'), val: col.querySelector('[data-v]') });
+  }
+
+  function run(){
+    const T = +document.getElementById('temp').value;
+    const p = softmax(vals, T);
+    const win = p.indexOf(Math.max.apply(null, [...p]));
+    for(let i=0;i<3;i++){
+      bars[i].fill.style.height = (p[i]*100).toFixed(1)+'%';
+      bars[i].val.textContent = (p[i]*100).toFixed(1)+'%';
+      bars[i].fill.classList.toggle('win', i===win);
+      document.getElementById(ids[i]+'v').textContent = vals[i].toFixed(1);
+    }
+    document.getElementById('tempv').textContent = T.toFixed(2);
+    document.getElementById('sm-sum').textContent = 'Σ p = '+(p[0]+p[1]+p[2]).toFixed(3)+'   ·   T = '+T.toFixed(2);
+  }
+
+  ids.forEach((id,i)=>{
+    document.getElementById(id).addEventListener('input', e=>{
+      vals[i] = +e.target.value; run();
+    });
+  });
+  document.getElementById('temp').addEventListener('input', run);
+  run();
+})();
+
+/* ============================================================
+   06 · 交叉熵 + 训练损失曲线
+   ============================================================ */
+(function(){
+  const svg = document.getElementById('ceSvg');
+  if(!svg) return;
+  const X0=48, X1=498, Y0=150, Y1=22;
+  const LMAX = 4.7;
+  const sx = p => X0 + p*(X1-X0);
+  const sy = l => Y0 + (l/LMAX)*(Y1-Y0);
+
+  let g = '';
+  for(let i=1;i<=4;i++){
+    g += '<line x1="'+X0+'" y1="'+sy(i)+'" x2="'+X1+'" y2="'+sy(i)+'" stroke="rgba(208,213,221,.07)"/>';
+    g += '<text class="curve-lbl" x="'+(X0-8)+'" y="'+(sy(i)+3)+'" text-anchor="end">'+i+'</text>';
+  }
+  for(let p=0;p<=1.001;p+=0.25){
+    g += '<line x1="'+sx(p)+'" y1="'+Y0+'" x2="'+sx(p)+'" y2="'+Y1+'" stroke="rgba(208,213,221,.07)"/>';
+    g += '<text class="curve-lbl" x="'+sx(p)+'" y="'+(Y0+16)+'" text-anchor="middle">'+p.toFixed(2)+'</text>';
+  }
+  g += '<line x1="'+X0+'" y1="'+Y0+'" x2="'+X1+'" y2="'+Y0+'" stroke="rgba(208,213,221,.25)"/>';
+  g += '<text class="curve-lbl" x="'+(X1)+'" y="'+(Y0+30)+'" text-anchor="end">p_y</text>';
+  g += '<text class="curve-lbl" x="'+(X0-38)+'" y="'+(Y1+2)+'">L</text>';
+
+  const pts = [];
+  for(let i=0;i<=240;i++){
+    const p = 0.01 + 0.99*i/240;
+    pts.push([sx(p), sy(-Math.log(p))]);
+  }
+  const d = pts.map((q,i)=>(i?'L':'M')+q[0].toFixed(2)+' '+q[1].toFixed(2)).join(' ');
+  g += '<path d="'+d+'" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round"/>';
+  g += '<circle id="ceDot" cx="'+sx(0.96)+'" cy="'+sy(-Math.log(0.96))+'" r="4.5" fill="#4F46E5"/>';
+  g += '<line id="ceVLine" x1="'+sx(0.96)+'" y1="'+Y0+'" x2="'+sx(0.96)+'" y2="'+sy(-Math.log(0.96))+'" stroke="rgba(79,70,229,.3)" stroke-dasharray="3 3"/>';
+  g += '<text class="curve-lbl" x="'+(sx(0.5)+6)+'" y="'+(sy(0.69)-8)+'" fill="rgba(124,58,237,.85)">p=0.5 → L=0.69</text>';
+  svg.innerHTML = g;
+
+  const dot = document.getElementById('ceDot');
+  const vl = document.getElementById('ceVLine');
+  const py = document.getElementById('py');
+  py.addEventListener('input', ()=>{
+    const p = +py.value;
+    const L = -Math.log(p);
+    document.getElementById('pyv').textContent = p.toFixed(3);
+    document.getElementById('ce-read').textContent = 'p = '+p.toFixed(3)+'  →  L = '+L.toFixed(3);
+    dot.setAttribute('cx', sx(p)); dot.setAttribute('cy', sy(L));
+    vl.setAttribute('x1', sx(p)); vl.setAttribute('x2', sx(p)); vl.setAttribute('y2', sy(L));
+  });
+  py.dispatchEvent(new Event('input'));
+})();
+
+/* ---- 训练损失曲线 ---- */
+(function(){
+  const svg = document.getElementById('lossSvg');
+  if(!svg) return;
+  const X0=46, X1=534, Y0=196, Y1=26;
+  const LMAX = 2.6, EP = 12;
+  const sx = e => X0 + e/EP*(X1-X0);
+  const sy = l => Y0 - (l/LMAX)*(Y0-Y1);
+
+  let g = '';
+  for(let l=0;l<=2.5;l+=0.5){
+    g += '<line x1="'+X0+'" y1="'+sy(l)+'" x2="'+X1+'" y2="'+sy(l)+'" stroke="rgba(208,213,221,.07)"/>';
+    g += '<text class="curve-lbl" x="'+(X0-8)+'" y="'+(sy(l)+3)+'" text-anchor="end">'+l.toFixed(1)+'</text>';
+  }
+  for(let e=0;e<=EP;e+=2){
+    g += '<text class="curve-lbl" x="'+sx(e)+'" y="'+(Y0+16)+'" text-anchor="middle">'+e+'</text>';
+  }
+  g += '<line x1="'+X0+'" y1="'+Y0+'" x2="'+X1+'" y2="'+Y0+'" stroke="rgba(208,213,221,.25)"/>';
+  g += '<text class="curve-lbl" x="'+X1+'" y="'+(Y0+30)+'" text-anchor="end">epoch</text>';
+  g += '<text class="curve-lbl" x="'+(X0-40)+'" y="'+(Y1-8)+'">loss</text>';
+  g += '<line x1="'+X0+'" y1="'+sy(0.1)+'" x2="'+X1+'" y2="'+sy(0.1)+'" stroke="rgba(224,82,82,.3)" stroke-dasharray="4 4"/>';
+  g += '<text class="curve-lbl" x="'+(X1-4)+'" y="'+(sy(0.1)-7)+'" text-anchor="end" fill="rgba(224,82,82,.7)">收敛区间 ≈ 0.1</text>';
+
+  // 造一条真实感的收敛曲线
+  const R = mulberry32(2026);
+  const val = [];
+  for(let i=0;i<=120;i++){
+    const e = EP*i/120;
+    const base = 2.30*Math.exp(-e/2.35) + 0.052;
+    const noise = (R()-0.5)*0.075*Math.exp(-e/7);
+    val.push([sx(e), sy(Math.max(0.035, base+noise))]);
+  }
+  const d = val.map((q,i)=>(i?'L':'M')+q[0].toFixed(2)+' '+q[1].toFixed(2)).join(' ');
+
+  g += '<path id="lossPath" d="'+d+'" fill="none" stroke="#4F46E5" stroke-width="2.2" stroke-linecap="round" '+
+       'style="filter:drop-shadow(0 0 10px rgba(79,70,229,.45))"/>';
+  g += '<circle id="lossDot" r="4" fill="#6366F1" opacity="0"/>';
+  svg.innerHTML = g;
+
+  const path = document.getElementById('lossPath');
+  const dotEl = document.getElementById('lossDot');
+  let raf = null;
+
+  function play(){
+    if(raf) cancelAnimationFrame(raf);
+    const total = path.getTotalLength();
+    path.style.strokeDasharray = total;
+    path.style.strokeDashoffset = total;
+    const t0 = performance.now();
+    (function step(){
+      const p = Math.min((performance.now()-t0)/2200, 1);
+      const ease = 1-Math.pow(1-p, 2.2);
+      path.style.strokeDashoffset = total*(1-ease);
+      const pt = path.getPointAtLength(total*ease);
+      dotEl.setAttribute('cx', pt.x); dotEl.setAttribute('cy', pt.y);
+      dotEl.setAttribute('opacity', p>0.02 ? 1 : 0);
+      if(p<1) raf = requestAnimationFrame(step);
+    })();
+  }
+  play();
+  document.getElementById('btnTrain').onclick = play;
+})();
+
+/* ============================================================
+   阅读进度 + 目录高亮
+   ============================================================ */
+(function(){
+  const bar = document.getElementById('progress');
+  const links = [...document.querySelectorAll('.toc a')];
+  const secs = links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+
+  function onScroll(){
+    const h = document.documentElement;
+    const p = h.scrollTop / (h.scrollHeight - h.clientHeight || 1);
+    bar.style.width = (p*100).toFixed(2)+'%';
+
+    let cur = 0;
+    secs.forEach((s,i)=>{
+      if(s.getBoundingClientRect().top <= 140) cur = i;
+    });
+    links.forEach((a,i)=>a.classList.toggle('on', i===cur));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+
+/* 进场 */
+(function(){
+  const els = [...document.querySelectorAll('section, .panel')];
+  els.forEach(el=>el.classList.add('rise'));
+  let queued=false;
+  function reveal(){
+    queued=false;
+    const vh=window.innerHeight||800;
+    els.forEach((el)=>{
+      if(el.classList.contains('in')) return;
+      const r=el.getBoundingClientRect();
+      if(r.top < vh-20 && r.bottom > -20) el.classList.add('in');
+    });
+  }
+  function onScroll(){ if(!queued){ queued=true; requestAnimationFrame(reveal); } }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+  reveal();
+  setTimeout(reveal,120);
+})();
+</script>
+</body>
+</html>
