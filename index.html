@@ -129,7 +129,7 @@
   .link-more{font-size:13px;color:var(--indigo);text-decoration:none;white-space:nowrap}
   .link-more:hover{text-decoration:underline}
 
-  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
   .ch{
     display:block;text-decoration:none;color:inherit;background:var(--card);
     border:1px solid var(--line);border-radius:18px;padding:22px;
@@ -246,7 +246,7 @@
 
   <section class="hero">
     <div>
-      <div class="badge"><b>NEW</b> 第 01 章已上线 · MLP 识别手写数字</div>
+      <div class="badge"><b>NEW</b> 2 章已上线 · MLP 与梯度下降</div>
       <div class="hi">Hi, 我是 <b>Apiginchaosr</b></div>
       <h1>把神经网络<br><em>拆开</em>来看</h1>
       <p class="lede">
@@ -336,16 +336,27 @@
         <span class="tag">Backprop</span>
       </div>
     </a>
+    <a class="ch live" href="deep-learning/02-gradient-descent.html">
+      <span class="status">已上线</span>
+      <span class="no">02</span>
+      <h3>梯度下降</h3>
+      <p>从导数、梯度讲到学习率与 SGD，用可以真正跑起来的下降动画，看小球怎么一步步滑向谷底——以及为什么会飞出去。</p>
+      <div class="tags">
+        <span class="tag">Gradient</span>
+        <span class="tag">Learning Rate</span>
+        <span class="tag">SGD</span>
+      </div>
+    </a>
     <a class="ch off" href="#">
       <span class="status">计划中</span>
-      <span class="no">02</span>
+      <span class="no">03</span>
       <h3>卷积神经网络</h3>
       <p>为什么图像不该被展平、卷积核到底在找什么、感受野是怎么一步步长大的。</p>
       <div class="tags"><span class="tag">CNN</span><span class="tag">Kernel</span></div>
     </a>
     <a class="ch off" href="#">
       <span class="status">计划中</span>
-      <span class="no">03</span>
+      <span class="no">04</span>
       <h3>注意力与 Transformer</h3>
       <p>Q、K、V 的几何直觉，以及一句话内部的信息究竟是怎么流动的。</p>
       <div class="tags"><span class="tag">Attention</span><span class="tag">Transformer</span></div>

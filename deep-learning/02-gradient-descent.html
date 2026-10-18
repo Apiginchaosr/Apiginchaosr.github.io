@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="梯度下降：从导数、梯度、学习率到 SGD 与小批量，用可交互的下降动画讲清深度学习最核心的优化算法。" />
+<title>02 · 梯度下降 · Apiginchaosr</title>
+<style>
+  :root{
+    --bg:#F4F5F8;
+    --card:#FFFFFF;
+    --ink:#0C111D;
+    --body:#475467;
+    --muted:#98A2B3;
+    --line:#EAECF0;
+    --line-strong:#D0D5DD;
+    --indigo:#4F46E5;
+    --indigo-2:#4338CA;
+    --indigo-soft:#EEF0FF;
+    --cyan:#4F46E5;
+    --violet:#7C3AED;
+    --pink:#E05252;
+    --amber:#B54708;
+    --green:#0E9F6E;
+    --radius:18px;
+    --shadow-sm:0 1px 2px rgba(16,24,40,.04);
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 14px 34px -16px rgba(16,24,40,.14);
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Inter,sans-serif;
+    --mono:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;
+    --math:"Cambria Math","Latin Modern Math",Cambria,Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.78;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(820px 460px at 8% -10%, rgba(79,70,229,.10), transparent 62%),
+      radial-gradient(700px 400px at 94% 0%, rgba(14,159,110,.08), transparent 60%);
+  }
+  /* 顶部阅读进度 */
+  #progress{
+    position:fixed;top:0;left:0;height:2px;width:0;z-index:99;
+    background:linear-gradient(90deg,#4F46E5,#7C3AED);
+    transition:width .12s linear;
+  }
+  /* 导航 */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 clamp(18px,4vw,56px);height:62px;
+    background:rgba(244,245,248,.82);backdrop-filter:blur(14px) saturate(160%);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:650;font-size:14.5px;letter-spacing:-.02em}
+  .logo-mark{
+    width:27px;height:27px;border-radius:8px;display:grid;place-items:center;flex:none;
+    background:linear-gradient(145deg,#6366F1,#4338CA);
+    box-shadow:0 3px 10px -2px rgba(79,70,229,.45);
+  }
+  .logo-mark::before{content:"◈";color:#fff;font-size:12px;line-height:1}
+  .logo-txt{font-family:var(--sans);font-size:14.5px;letter-spacing:-.02em}
+  .nav-r{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--body)}
+  .nav-r a{color:var(--body);text-decoration:none;transition:color .25s;display:inline-flex;align-items:center;gap:6px}
+  .nav-r a:hover{color:var(--indigo)}
+  .chip{
+    border:1px solid var(--line);background:#fff;border-radius:100px;
+    padding:5px 12px;font-size:10.5px;letter-spacing:.08em;color:var(--muted);
+    text-transform:uppercase;box-shadow:var(--shadow-sm);
+  }
+
+  /* 布局：侧栏 + 正文 */
+  .shell{
+    display:grid;grid-template-columns:200px minmax(0,1fr);
+    gap:clamp(24px,4vw,64px);
+    max-width:1200px;margin:0 auto;padding:0 clamp(18px,4vw,56px);
+    align-items:start;
+  }
+  .toc{position:sticky;top:88px;padding:30px 0 40px;font-size:12px}
+  .toc-h{color:var(--muted);letter-spacing:.18em;font-size:9.5px;text-transform:uppercase;margin-bottom:12px}
+  .toc a{
+    display:block;color:var(--body);text-decoration:none;
+    padding:8px 0 8px 12px;border-left:2px solid var(--line);
+    transition:all .25s;line-height:1.5;
+  }
+  .toc a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+  .toc a.on{color:var(--indigo);border-left-color:var(--indigo);font-weight:550}
+  @media (max-width: 900px){
+    .shell{display:block;max-width:none}
+    .toc{display:none}
+  }
+
+  main{padding-bottom:40px;min-width:0}
+
+  /* 章节头 */
+  .chap-head{padding:clamp(36px,6vw,64px) 0 clamp(24px,4vw,36px)}
+  .crumb{font-size:10.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:20px}
+  .crumb span{color:var(--indigo)}
+  h1{font-size:clamp(30px,4.6vw,46px);line-height:1.18;letter-spacing:-.03em;font-weight:650;margin-bottom:18px}
+  h1 em{
+    font-style:normal;
+    background:linear-gradient(100deg,#4F46E5,#7C3AED 70%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .abstract{color:var(--body);font-size:clamp(14px,1.6vw,15.5px);max-width:60ch}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .tag{
+    font-size:10.5px;padding:4px 10px;border-radius:100px;
+    background:var(--indigo-soft);color:var(--indigo-2);font-weight:500;
+  }
+
+  /* 章节 */
+  section{scroll-margin-top:84px;padding:clamp(34px,5vw,52px) 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  .s-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
+  .s-idx{
+    font-family:var(--mono);font-size:11px;color:var(--indigo);
+    background:var(--indigo-soft);border-radius:6px;padding:2px 8px;flex:none;font-weight:600;
+  }
+  h2{font-size:clamp(20px,2.5vw,25px);font-weight:650;letter-spacing:-.025em;line-height:1.4}
+  h3{font-size:15px;font-weight:650;margin:26px 0 10px;color:var(--ink);letter-spacing:-.01em}
+  p{color:var(--body);font-size:14.8px;margin:12px 0;max-width:68ch;line-height:1.85}
+  p b,li b{color:var(--ink);font-weight:600}
+  p .hl{color:var(--indigo);font-weight:500}
+  ul,ol{margin:12px 0 12px 2px;padding-left:20px;max-width:68ch}
+  li{color:var(--body);font-size:14.5px;margin:7px 0;line-height:1.8}
+  code{
+    font-family:var(--mono);font-size:12.8px;background:#F2F4F7;
+    border:1px solid var(--line);padding:1.5px 6px;border-radius:5px;color:#344054;
+  }
+  strong.warn{color:var(--amber);font-weight:600}
+
+  /* 公式 */
+  .formula{
+    font-family:var(--math);font-size:clamp(17px,2vw,20px);letter-spacing:.01em;
+    color:var(--ink);padding:18px 22px;margin:18px 0;
+    border-left:3px solid var(--indigo);border-radius:0 12px 12px 0;
+    background:#F7F8FC;
+    overflow-x:auto;line-height:2.1;
+  }
+  .formula .v{font-style:italic;font-family:var(--math)}
+  .formula .sub{font-size:.72em;vertical-align:-.28em;font-style:italic}
+  .formula .sup{font-size:.72em;vertical-align:.42em}
+  .formula .op{color:var(--muted);padding:0 .3em;font-style:normal}
+  .formula .note{display:block;font-family:var(--sans);font-size:11.5px;color:var(--muted);letter-spacing:.02em;margin-top:6px;font-style:normal;line-height:1.7}
+
+  /* 卡片 */
+  .panel{
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    background:var(--card);box-shadow:var(--shadow);
+    margin:24px 0;position:relative;
+  }
+  .panel-h{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:13px 18px;border-bottom:1px solid var(--line);
+    font-size:11px;letter-spacing:.06em;color:var(--muted);
+  }
+  .panel-h .dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--indigo);margin-right:8px;vertical-align:1px;
+  }
+  .panel-b{padding:clamp(16px,2.4vw,24px)}
+
+  /* 提示块 */
+  .aside{
+    border:1px solid #FEDF89;border-radius:12px;padding:14px 18px;margin:20px 0;
+    background:#FFFAEB;font-size:13.6px;color:#7A4E1E;line-height:1.75;max-width:70ch;
+  }
+  .aside b{color:#B54708}
+  .aside .lbl{font-size:10px;letter-spacing:.14em;color:#B54708;display:block;margin-bottom:5px;text-transform:uppercase;font-weight:600}
+
+  /* 控件 */
+  .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{
+    font-size:12px;font-weight:500;
+    padding:8px 14px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--line-strong);background:#fff;color:var(--body);
+    transition:all .2s;line-height:1.2;
+  }
+  .btn:hover{border-color:#B4BAC6;color:var(--ink);background:#FCFCFD}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600;box-shadow:0 2px 8px -2px rgba(79,70,229,.5)}
+  .btn.primary:hover{background:var(--indigo-2);color:#fff}
+  .btn.on{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+  .btn.sm{padding:5px 10px;font-size:11px}
+  .num-btns{display:flex;gap:5px;flex-wrap:wrap}
+  .num-btns .btn{width:32px;padding:6px 0;text-align:center;font-size:11.5px}
+
+  /* 数字网格 */
+  .grid-wrap{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(16px,3vw,34px);align-items:start}
+  @media (max-width: 700px){.grid-wrap{grid-template-columns:minmax(0,1fr)}}
+  #gridcv{
+    display:block;border-radius:12px;cursor:crosshair;
+    border:1px solid var(--line);box-shadow:0 8px 24px -12px rgba(16,24,40,.18);
+  }
+  .readout{display:grid;gap:8px;font-size:11.5px;color:var(--muted);align-content:start;padding-top:2px}
+  .readout .kv{display:flex;gap:10px;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:6px}
+  .readout .kv b{color:var(--ink);font-weight:600}
+
+  /* 柱状图 */
+  .bars{display:flex;align-items:flex-end;gap:clamp(4px,1vw,10px);padding-top:8px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+  .bar-track{
+    width:100%;height:118px;display:flex;align-items:flex-end;
+    background:#F2F4F7;border-radius:6px;overflow:hidden;
+  }
+  .bar-fill{
+    width:100%;background:linear-gradient(180deg,#818CF8,#4F46E5);
+    border-radius:6px 6px 0 0;transition:height .5s cubic-bezier(.16,1,.3,1);
+    height:0;
+  }
+  .bar-fill.win{background:linear-gradient(180deg,#4F46E5,#3730A3);box-shadow:0 0 12px rgba(79,70,229,.35)}
+  .bar-lbl{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  .bar-val{font-family:var(--mono);font-size:9.5px;color:var(--muted);height:12px}
+
+  /* 神经元 demo */
+  .neu-demo{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:clamp(16px,3vw,30px);align-items:center}
+  @media (max-width: 720px){.neu-demo{grid-template-columns:minmax(0,1fr)}}
+  .neu-rows{display:grid;gap:10px}
+  #smBars{justify-content:flex-start;gap:20px;margin-top:26px !important}
+  #smBars .bar-col{flex:0 0 88px}
+  #smBars .bar-track{height:112px}
+  .neu-row{display:grid;grid-template-columns:max-content 1fr 84px;gap:14px;align-items:center}
+  .neu-x{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+    background:#E4E7EC;outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;border:2px solid #fff;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    border:2px solid #fff;box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;
+  }
+  .neu-w{font-family:var(--mono);font-size:11px;color:var(--indigo);text-align:right}
+  .neu-out{
+    border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;
+    background:#FCFCFD;
+  }
+  .neu-out .big{font-family:var(--mono);font-size:26px;color:var(--indigo);line-height:1.3}
+  .neu-out .lbl{font-size:9.5px;letter-spacing:.05em;color:var(--muted)}
+
+  /* 网络 canvas 面板 */
+  .net-stage{position:relative;background:#FCFCFD}
+  #netcv{display:block;width:100%;height:auto}
+  .net-status{
+    display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);letter-spacing:.02em;min-height:40px;
+  }
+  .net-status .ph{color:var(--indigo);font-weight:600}
+  .net-summary{
+    display:flex;flex-wrap:wrap;gap:22px;padding:14px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .net-summary b{color:var(--ink);font-weight:600}
+  .net-summary .win b{color:var(--indigo)}
+
+  /* 曲线 */
+  .curve-box{position:relative}
+  svg.curve{width:100%;height:auto;display:block;overflow:visible}
+  .curve-lbl{font-family:var(--mono);font-size:9.5px;fill:var(--muted);letter-spacing:.04em}
+
+  /* 流程回顾 */
+  .flow{display:grid;gap:0;margin:22px 0}
+  .flow-step{display:grid;grid-template-columns:26px minmax(0,1fr);gap:16px;padding:14px 0;position:relative}
+  .flow-step:not(:last-child)::before{
+    content:"";position:absolute;left:12.5px;top:38px;bottom:-4px;width:1px;
+    background:linear-gradient(180deg,#C7D2FE,#EEF0FF);
+  }
+  .flow-n{
+    width:26px;height:26px;border-radius:50%;border:1px solid #C7D2FE;
+    display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--indigo);
+    background:#fff;z-index:1;font-weight:600;
+  }
+  .flow-t{font-size:14px;font-weight:650;margin-bottom:3px}
+  .flow-d{font-size:13px;color:var(--body);line-height:1.7}
+  .flow-d code{font-size:12px}
+
+  /* 公式速查 */
+  .cheat{display:grid;gap:10px}
+  .cheat-row{
+    display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;align-items:center;
+    padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;
+  }
+  .cheat-k{font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+  .cheat-v{font-family:var(--math);font-size:15.5px;color:var(--ink);overflow-x:auto;white-space:nowrap}
+  @media (max-width: 640px){
+    .cheat-row{grid-template-columns:minmax(0,1fr);gap:6px}
+    .cheat-v{white-space:normal}
+  }
+
+  .foot-nav{
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    border-top:1px solid var(--line);padding:30px 0 60px;margin-top:20px;
+  }
+  .foot-nav a{
+    font-size:12.5px;color:var(--body);text-decoration:none;
+    border:1px solid var(--line);border-radius:8px;padding:10px 16px;transition:all .25s;background:#fff;
+  }
+  .foot-nav a:hover{color:var(--indigo);border-color:#C7D2FE}
+  .foot-nav a.dim{opacity:.45;pointer-events:none}
+
+  .rise{transform:translateY(14px);transition:transform .55s cubic-bezier(.16,1,.3,1)}
+  .rise.in{transform:none}
+
+  @media (max-width: 620px){
+    .panel-h{flex-direction:column;align-items:flex-start;gap:10px}
+    .num-btns{width:100%}
+    .num-btns .btn{flex:1 1 0;width:auto;padding:6px 0}
+    .nav-r .chip{display:none}
+    h1{font-size:clamp(26px,7vw,32px)}
+    p,li{font-size:14px}
+    .net-summary{gap:14px}
+    #smBars .bar-col{flex:1 1 0;min-width:0}
+  }
+
+
+  /* ---- 第 02 章新增组件 ---- */
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+  .metrics{
+    display:flex;gap:18px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .metrics b{color:var(--ink);font-weight:600;font-family:var(--mono)}
+  .presets{display:flex;gap:6px;flex-wrap:wrap}
+  .tip-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+  .tip{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fff}
+  .tip h4{font-size:13px;font-weight:650;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .tip h4 span{
+    font-size:9.5px;color:var(--indigo);background:var(--indigo-soft);
+    padding:2px 8px;border-radius:100px;font-weight:600;flex:none;
+  }
+  .tip h4 .t-bad{color:#B54708;background:#FEF0C7}
+  .tip h4 .t-good{color:#027A48;background:#ECFDF3}
+  .tip p{font-size:12.5px;color:var(--body);line-height:1.7;margin:0;max-width:none}
+  canvas{display:block}
+  @media (max-width:640px){.tip-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<header class="nav">
+  <a class="logo" href="../index.html">
+    <span class="logo-mark"></span>
+    <span class="logo-txt">Apiginchaosr</span>
+  </a>
+  <div class="nav-r">
+    <span class="chip">Chapter 02</span>
+    <a href="../index.html">← 首页</a>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="toc">
+    <div class="toc-h">Contents</div>
+    <a href="#g1" class="on">01 下山的直觉</a>
+    <a href="#g2">02 导数与切线</a>
+    <a href="#g3">03 梯度</a>
+    <a href="#g4">04 走一步看看</a>
+    <a href="#g5">05 学习率</a>
+    <a href="#g6">06 三种批量</a>
+    <a href="#g7">07 走不动时</a>
+    <a href="#g8">08 小结</a>
+  </aside>
+
+  <main>
+    <!-- ============ 章节头 ============ -->
+    <div class="chap-head">
+      <div class="crumb">DEEP&nbsp;LEARNING <span>/</span> CHAPTER 02</div>
+      <h1>让损失<br><em>降下去</em></h1>
+      <p class="abstract">
+        模型学没学会，只看一个数——损失。梯度下降就是「每一步都朝让损失变小的方向挪一点」。
+        这一章把导数、梯度、学习率和随机性拆开，并且让小球真的在曲面上滚一遍。
+      </p>
+      <div class="meta-row">
+        <span class="tag">Gradient Descent</span>
+        <span class="tag">Learning Rate</span>
+        <span class="tag">SGD · Mini-batch</span>
+        <span class="tag">Convergence</span>
+      </div>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section id="g1">
+      <div class="s-head"><span class="s-idx">01</span><h2>蒙着眼，怎么下山？</h2></div>
+
+      <p>
+        想象你被丢在一片山谷的某个位置，眼睛被蒙住，只能感受<strong>脚下的坡度</strong>。
+        要走到谷底，最朴素的办法是：用脚试探哪个方向最陡，朝下坡迈一步，停下来重新感受，再迈一步。
+      </p>
+
+      <p>
+        这就是梯度下降。它并不「知道」谷底在哪，只依赖<strong>当前位置的局部信息</strong>——
+        而正是这种只看脚下、却能反复逼近最优的性质，让它成为几乎所有深度学习训练的底座。
+      </p>
+
+      <div class="formula">
+        <span class="v">w</span><span class="sup">(t+1)</span>
+        <span class="op">=</span>
+        <span class="v">w</span><span class="sup">(t)</span>
+        <span class="op">−</span>
+        <span class="v">η</span>
+        <span class="op">·</span>
+        <span class="v">∇L</span>(<span class="v">w</span><span class="sup">(t)</span>)
+        <span class="note">三个要素：起点 w⁽⁰⁾（初始化）、方向 −∇L（最陡下坡）、步长 η（学习率）</span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span><span class="dot"></span>Descent, conceptually</span><span>Fig. 01</span></div>
+        <div class="panel-b">
+          <svg viewBox="0 0 720 240" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">
+            <defs>
+              <linearGradient id="valley" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#EEF0FF"/><stop offset="1" stop-color="#F7F8FC"/>
+              </linearGradient>
+            </defs>
+            <path d="M40 40 C170 220 300 220 380 196 C460 172 560 60 690 74"
+                  fill="none" stroke="#D0D5DD" stroke-width="1.6"/>
+            <path d="M40 210 L40 45" stroke="#E4E7EC" stroke-dasharray="3 4"/>
+            <line x1="40" y1="210" x2="700" y2="210" stroke="#E4E7EC"/>
+
+            <!-- 阶梯路径 -->
+            <g stroke="#4F46E5" stroke-width="1.4" stroke-dasharray="4 5" opacity=".55" fill="none">
+              <path d="M96 94 L96 118 M96 118 L150 118 L150 152 M150 152 L210 152 L210 176 M210 176 L268 176 L268 188 M268 188 L330 188 L330 195"/>
+            </g>
+            <!-- 起点 -->
+            <circle cx="96" cy="94" r="7" fill="#fff" stroke="#4F46E5" stroke-width="2"/>
+            <text x="72" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#667085">w⁽⁰⁾</text>
+            <!-- 中间点 -->
+            <circle cx="150" cy="152" r="4.5" fill="#818CF8"/>
+            <circle cx="210" cy="176" r="4.5" fill="#818CF8"/>
+            <circle cx="268" cy="188" r="4.5" fill="#818CF8"/>
+            <circle cx="330" cy="195" r="4.5" fill="#818CF8"/>
+            <!-- 谷底 -->
+            <circle cx="368" cy="196" r="7.5" fill="#4F46E5"/>
+            <circle cx="368" cy="196" r="14" fill="#4F46E5" fill-opacity=".12"/>
+            <text x="348" y="228" font-family="ui-monospace, monospace" font-size="11" fill="#4F46E5">w*</text>
+
+            <!-- 切线 -->
+            <line x1="72" y1="76" x2="122" y2="106" stroke="#0C111D" stroke-width="1" opacity=".35"/>
+            <text x="128" y="86" font-family="ui-monospace, monospace" font-size="10.5" fill="#667085">slope = ∇L</text>
+
+            <text x="40" y="26" font-family="ui-monospace, monospace" font-size="10" fill="#98A2B3">LOSS</text>
+            <text x="700" y="232" font-family="ui-monospace, monospace" font-size="10" fill="#98A2B3" text-anchor="end">PARAMETER w</text>
+          </svg>
+        </div>
+      </div>
+
+      <p>
+        注意图上每一次迈步都比上一次<strong>更短</strong>：越靠近谷底，坡度越缓，同样的学习率走出来的一步自然越小。
+        这是梯度下降自带的性质——它会自动减速。
+      </p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section id="g2">
+      <div class="s-head"><span class="s-idx">02</span><h2>导数：一维的坡度</h2></div>
+
+      <p>
+        在一维情况下，「梯度」就是导数。导数的几何意义是<strong>曲线在某点的切线斜率</strong>，
+        它同时告诉你两件事：往哪边走（符号）和有多陡（大小）。
+      </p>
+
+      <ul>
+        <li><code>f'(w) &gt; 0</code> — 函数正在上升，应该往<strong>左</strong>走（减小 w）</li>
+        <li><code>f'(w) &lt; 0</code> — 函数正在下降，应该往<strong>右</strong>走（增大 w）</li>
+        <li><code>f'(w) = 0</code> — 脚下是平的，可能已经到极值点了</li>
+      </ul>
+
+      <p>
+        更新式 <code>w ← w − η·f'(w)</code> 里那个<strong>减号</strong>就是在自动处理方向：
+        导数为正时减去正数、w 变小；导数为负时减去负数、w 变大。两种情况下都在下坡。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h"><span><span class="dot"></span>Tangent line</span><span>拖动曲线上的点</span></div>
+        <div class="panel-b">
+          <canvas id="tanCv"></canvas>
+          <div class="metrics">
+            <div>w = <b id="tanW">-2.40</b></div>
+            <div>L(w) = <b id="tanL">0.00</b></div>
+            <div>斜率 L'(w) = <b id="tanD">0.00</b></div>
+            <div id="tanDir" style="color:var(--indigo)">→ 向右走</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section id="g3">
+      <div class="s-head"><span class="s-idx">03</span><h2>梯度：把导数推广到多维</h2></div>
+
+      <p>
+        模型参数通常有几十万个，损失是这些参数的高维函数。把每个方向上的偏导拼起来，就是<strong>梯度</strong>：
+      </p>
+
+      <div class="formula">
+        <span class="v">∇L</span> <span class="op">=</span>
+        [ <span style="font-family:var(--math)">∂L/∂w</span><span class="sub">1</span>,
+        &nbsp;<span style="font-family:var(--math)">∂L/∂w</span><span class="sub">2</span>,
+        &nbsp;…,&nbsp;
+        <span style="font-family:var(--math)">∂L/∂w</span><span class="sub">n</span> ]
+        <span class="note">一个和参数同维的向量，每个分量表示「只往这个方向动一点，损失会变多快」</span>
+      </div>
+
+      <p>梯度有三个关键性质，第三个最常被忽略：</p>
+      <ol>
+        <li>它指向函数<strong>增长最快</strong>的方向；</li>
+        <li>它的长度等于那个方向上的变化率；</li>
+        <li>它<strong>垂直于等高线</strong>——等高线上函数值不变，所以沿等高线移动损失不变，最陡方向必然与之垂直。</li>
+      </ol>
+
+      <p>
+        所以 <code>−∇L</code> 是下降最快的方向，而「最快」是局部意义上的：它只保证这一步降得最多，
+        不保证能一路走到全局最优。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h"><span><span class="dot"></span>Contour &amp; gradient</span><span>移动鼠标看箭头</span></div>
+        <div class="panel-b">
+          <canvas id="gradCv"></canvas>
+          <div class="metrics">
+            <div>L(w₁,w₂) = w₁² + 4w₂²</div>
+            <div>∇L = <b id="gradVec">(0.0, 0.0)</b></div>
+            <div style="color:var(--muted)">箭头方向 = −∇L（下降方向）</div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        注意等高线是<strong>扁的</strong>：w₂ 方向的系数是 4，同样的位移带来的损失变化更大，
+        所以这个方向更陡、梯度分量也更大。这种各方向陡峭程度不一致的情况，正是后面「震荡」的根源。
+      </p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section id="g4">
+      <div class="s-head"><span class="s-idx">04</span><h2>走一步看看</h2></div>
+
+      <p>
+        下面这条曲线是 <code>L(w) = (w − 3.2)² + 0.8</code>，导数 <code>L'(w) = 2(w − 3.2)</code>。
+        小球从 <code>w = 0.2</code> 出发，每点一次迭代就走一步。拖动学习率，看它怎么变。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Gradient descent · 1D</span>
+          <div class="presets">
+            <button class="btn sm" data-lr="0.04">太小 0.04</button>
+            <button class="btn sm on" data-lr="0.30">刚好 0.30</button>
+            <button class="btn sm" data-lr="1.06">太大 1.06</button>
+          </div>
+        </div>
+        <div class="panel-b" style="padding-bottom:0">
+          <canvas id="descCv"></canvas>
+        </div>
+        <div class="metrics">
+          <div>迭代 t = <b id="descT">0</b></div>
+          <div>w = <b id="descW">0.200</b></div>
+          <div>L(w) = <b id="descL">9.800</b></div>
+          <div>下一步 Δ = <b id="descStep">—</b></div>
+        </div>
+        <div style="padding:14px 18px 18px" class="ctrl-row">
+          <button class="btn primary" id="descPlay">▶ 开始下降</button>
+          <button class="btn" id="descStepBtn">单步 →</button>
+          <button class="btn" id="descReset">重置</button>
+          <div style="display:flex;align-items:center;gap:10px;margin-left:auto;min-width:220px">
+            <span style="font-size:11.5px;color:var(--muted);white-space:nowrap">学习率 η</span>
+            <input type="range" id="descLr" min="0.02" max="1.15" step="0.01" value="0.3">
+            <span class="neu-w" id="descLrV">0.30</span>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        把 η 调到 1.06 试试：因为 <code>1 − 2η = −1.12</code>，每一步都会<strong>越过谷底</strong>并且越跳越远，
+        损失不降反升。这就是"学习率过大"最直接的样子。
+      </p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section id="g5">
+      <div class="s-head"><span class="s-idx">05</span><h2>学习率：最该先调的参数</h2></div>
+
+      <p>
+        同一条曲线、同一个起点，只改学习率，结局完全不同。下面三条轨迹并排跑：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h"><span><span class="dot"></span>Three fates</span>
+          <div class="legend">
+            <span><i style="background:#A5B4FC"></i>η = 0.04</span>
+            <span><i style="background:#4F46E5"></i>η = 0.30</span>
+            <span><i style="background:#E05252"></i>η = 1.06</span>
+          </div>
+        </div>
+        <div class="panel-b" style="padding-bottom:0">
+          <canvas id="fateCv"></canvas>
+        </div>
+        <div style="padding:14px 18px 18px" class="ctrl-row">
+          <button class="btn primary" id="fatePlay">▶ 重新播放</button>
+          <span style="font-size:12px;color:var(--muted)">三种命运：爬得太慢 / 快速收敛 / 震荡发散</span>
+        </div>
+      </div>
+
+      <p>
+        η 太小的代价是<strong>时间</strong>；太大则可能让参数直接飞出可行域。
+        实践中常用的做法是先做一次 learning rate range test（从小到大扫一遍，看 loss 在哪开始上升），
+        或者干脆用 Adam 这类自适应方法——它给每个参数单独维护一个有效步长。
+      </p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section id="g6">
+      <div class="s-head"><span class="s-idx">06</span><h2>用多少数据算一次梯度</h2></div>
+
+      <p>
+        真实训练里，损失是<strong>整个数据集</strong>上的平均。每走一步都算一遍全量梯度太贵，
+        于是有了三种取法：
+      </p>
+
+      <ul>
+        <li><b>批量梯度下降（BGD）</b>：用全部样本算梯度。方向最准，一步顶一步，但单步极慢。</li>
+        <li><b>随机梯度下降（SGD）</b>：每次只用一个样本。快，但梯度噪声大，路径抖得厉害。</li>
+        <li><b>小批量（mini-batch）</b>：每次 32～512 个样本。噪声适中，还能吃满 GPU 并行——这是实际默认选项。</li>
+      </ul>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Batch size vs. path</span>
+          <div class="presets">
+            <button class="btn sm on" data-batch="bgd">BGD</button>
+            <button class="btn sm" data-batch="mini">mini-batch</button>
+            <button class="btn sm" data-batch="sgd">SGD</button>
+          </div>
+        </div>
+        <div class="panel-b">
+          <canvas id="batchCv"></canvas>
+          <div class="metrics">
+            <div>等高线：<b>w₁² + 4w₂² = c</b></div>
+            <div id="batchNote" style="color:var(--indigo)">全量梯度：路径平滑，直指谷底</div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        抖动的路径看起来"不优雅"，但噪声反而有帮助：它能把你从浅的局部极小或鞍点附近推出去。
+        这也解释了为什么小批量往往比全量梯度<strong>泛化更好</strong>。
+      </p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section id="g7">
+      <div class="s-head"><span class="s-idx">07</span><h2>走不动的时候</h2></div>
+
+      <p>梯度下降失效的方式就那么几种，认出来就能对症下药。</p>
+
+      <div class="tip-grid">
+        <div class="tip">
+          <h4><span class="t-bad">症状</span>损失卡住不降</h4>
+          <p>可能停在<strong>局部极小</strong>或<strong>鞍点</strong>：梯度接近 0，但并不是最优。高维空间里鞍点远多于局部极小。</p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-good">对策</span>动量 / 随机噪声</h4>
+          <p>动量累积历史梯度，能冲过平坦区和小坑；SGD 的噪声本身也是一种逃离机制。</p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-bad">症状</span>损失来回震荡</h4>
+          <p>学习率过大，或各方向曲率差异太大（等高线很扁）——在陡的方向上来回弹。</p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-good">对策</span>衰减 / 自适应步长</h4>
+          <p>学习率衰减、warmup、Adam 的逐参数二阶矩估计，都是在给"陡方向"自动踩刹车。</p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-bad">症状</span>前期几乎不动</h4>
+          <p>梯度消失：深层网络里连乘的小导数让信号衰减到零（sigmoid 尤其明显）。</p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-good">对策</span>ReLU / 归一化 / 残差</h4>
+          <p>换激活函数、加 BatchNorm/LayerNorm、用残差连接让梯度有短路可走。</p>
+        </div>
+      </div>
+
+      <div class="aside">
+        <span class="lbl">一句话</span>
+        所有"改进版优化器"（Momentum、RMSProp、Adam）都只是在回答同一个问题：
+        <b>这一步的大小和方向，该怎么比朴素梯度下降估得更准一点。</b>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section id="g8">
+      <div class="s-head"><span class="s-idx">08</span><h2>全景回顾</h2></div>
+
+      <p>把一次参数更新拆到不能再拆，就是这四步：</p>
+
+      <div class="flow">
+        <div class="flow-step"><div class="flow-n">1</div><div>
+          <div class="flow-t">前向算出损失</div>
+          <div class="flow-d">输入一批数据，走完网络，得到预测，再用损失函数算出 <code>L</code></div></div></div>
+        <div class="flow-step"><div class="flow-n">2</div><div>
+          <div class="flow-t">反向求出梯度</div>
+          <div class="flow-d">链式法则从输出往回，得到每个参数的 <code>∂L/∂w</code></div></div></div>
+        <div class="flow-step"><div class="flow-n">3</div><div>
+          <div class="flow-t">沿负梯度走一步</div>
+          <div class="flow-d"><code>w ← w − η·∇L</code>，步长由学习率决定</div></div></div>
+        <div class="flow-step"><div class="flow-n">4</div><div>
+          <div class="flow-t">换一批数据，重复</div>
+          <div class="flow-d">一个 epoch 走完所有数据，几十上百个 epoch 之后收敛</div></div></div>
+      </div>
+
+      <h3>公式速查</h3>
+      <div class="cheat">
+        <div class="cheat-row"><span class="cheat-k">更新规则</span><span class="cheat-v">w ← w − η·∇L(w)</span></div>
+        <div class="cheat-row"><span class="cheat-k">一维导数</span><span class="cheat-v">f'(w) = lim<sub>h→0</sub> [f(w+h) − f(w)] / h</span></div>
+        <div class="cheat-row"><span class="cheat-k">梯度</span><span class="cheat-v">∇L = [∂L/∂w<sub>1</sub>, …, ∂L/∂w<sub>n</sub>]</span></div>
+        <div class="cheat-row"><span class="cheat-k">动量</span><span class="cheat-v">v ← βv + ∇L &nbsp;;&nbsp; w ← w − ηv</span></div>
+        <div class="cheat-row"><span class="cheat-k">Adam 步长</span><span class="cheat-v">w ← w − η·m̂ / (√v̂ + ε)</span></div>
+        <div class="cheat-row"><span class="cheat-k">收敛条件</span><span class="cheat-v">‖∇L‖ → 0 且 η 足够小</span></div>
+      </div>
+
+      <div class="foot-nav">
+        <a href="01-mlp.html">← 上一章：MLP 识别手写数字</a>
+        <a href="#" class="dim">下一章：CNN（待更新）→</a>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   公共工具
+   ============================================================ */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+
+function contentWidth(el){
+  const cs = getComputedStyle(el);
+  return Math.max(0, el.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0));
+}
+function mount(cv, W, H, draw){
+  let ctx = null, lastW = 0;
+  function render(){
+    if(!ctx) return;
+    draw(ctx, W, H);
+  }
+  function fit(){
+    const parent = cv.parentElement;
+    if(!parent) return;
+    const cssW = Math.round(contentWidth(parent));
+    if(!cssW) return;
+    lastW = cssW;
+    const dpr = Math.min(window.devicePixelRatio||1, 2);
+    const cssH = cssW * H / W;
+    cv.style.width = '100%';
+    cv.style.height = cssH + 'px';
+    cv.width = Math.round(cssW*dpr);
+    cv.height = Math.round(cssH*dpr);
+    ctx = cv.getContext('2d');
+    const k = dpr*cssW/W;
+    ctx.setTransform(k,0,0,k,0,0);
+    render();
+  }
+  fit();
+  requestAnimationFrame(fit);
+  if(window.ResizeObserver){
+    const ro = new ResizeObserver(()=>{
+      const w = Math.round(contentWidth(cv.parentElement));
+      if(w && w !== lastW) fit();
+    });
+    ro.observe(cv.parentElement);
+  }
+  window.addEventListener('resize', fit);
+  return { redraw: render, fit };
+}
+
+/* 画坐标轴与网格 */
+function axes(ctx, W, H, pad, xr, yr, sx, sy){
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = '#F0F2F5';
+  ctx.lineWidth = 1;
+  for(let i=0;i<=5;i++){
+    const y = pad.t + (H-pad.t-pad.b)*i/5;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y); ctx.stroke();
+  }
+  for(let i=0;i<=6;i++){
+    const x = pad.l + (W-pad.l-pad.r)*i/6;
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H-pad.b); ctx.stroke();
+  }
+  ctx.strokeStyle = '#D0D5DD';
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.lineTo(W-pad.r, H-pad.b);
+  ctx.stroke();
+}
+
+/* ============================================================
+   02 · 切线交互
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('tanCv');
+  if(!cv) return;
+  const W = 620, H = 300;
+  const f  = x => 0.16*x*x + 0.30*x + 1.4;
+  const df = x => 0.32*x + 0.30;
+  const xmin = -4.4, xmax = 4.4, ymin = 0, ymax = 4.6;
+  const pad = { l: 46, r: 18, t: 16, b: 34 };
+  const sx = x => pad.l + (x-xmin)/(xmax-xmin)*(W-pad.l-pad.r);
+  const sy = y => (H-pad.b) - (y-ymin)/(ymax-ymin)*(H-pad.t-pad.b);
+
+  let px = -2.4;
+  let inst = null;
+
+  function draw(ctx){
+    axes(ctx, W, H, pad);
+    // 曲线
+    ctx.beginPath();
+    for(let i=0;i<=200;i++){
+      const x = xmin + (xmax-xmin)*i/200;
+      const X = sx(x), Y = sy(f(x));
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = '#4F46E5';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const y0 = f(px), k = df(px);
+    // 切线段
+    const dx = 1.25;
+    ctx.beginPath();
+    ctx.moveTo(sx(px-dx), sy(y0 - k*dx));
+    ctx.lineTo(sx(px+dx), sy(y0 + k*dx));
+    ctx.strokeStyle = '#0C111D';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([5,4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 竖直辅助线
+    ctx.beginPath();
+    ctx.moveTo(sx(px), sy(y0)); ctx.lineTo(sx(px), H-pad.b);
+    ctx.strokeStyle = '#E4E7EC';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // 点
+    ctx.beginPath();
+    ctx.arc(sx(px), sy(y0), 6, 0, 6.2832);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#4F46E5';
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+
+    // 斜率标注
+    ctx.font = '500 11px ui-monospace, Consolas, monospace';
+    ctx.fillStyle = '#667085';
+    ctx.textAlign = 'left';
+    ctx.fillText("L' = " + k.toFixed(2), sx(px) + 12, sy(y0) - 12);
+
+    ctx.fillStyle = '#98A2B3';
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.fillText('w', W-pad.r, H-pad.b + 18);
+    ctx.fillText('L', pad.l - 26, pad.t + 8);
+
+    const wEl = document.getElementById('tanW');
+    if(wEl){
+      wEl.textContent = px.toFixed(2);
+      document.getElementById('tanL').textContent = y0.toFixed(2);
+      document.getElementById('tanD').textContent = k.toFixed(2);
+      const d = document.getElementById('tanDir');
+      if(Math.abs(k) < 0.06){ d.textContent = '→ 接近极值点'; d.style.color = '#0E9F6E'; }
+      else if(k > 0){ d.textContent = '← 向左走（导数为正）'; d.style.color = '#E05252'; }
+      else { d.textContent = '→ 向右走（导数为负）'; d.style.color = '#4F46E5'; }
+    }
+  }
+
+  inst = mount(cv, W, H, draw);
+
+  function move(e){
+    const r = cv.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX);
+    const x = xmin + ((cx - r.left)/r.width)*(xmax-xmin);
+    px = clamp(x, -4.2, 4.2);
+    inst.redraw();
+  }
+  cv.addEventListener('mousemove', move);
+  cv.addEventListener('touchmove', e=>{ e.preventDefault(); move(e); }, {passive:false});
+  cv.style.cursor = 'ew-resize';
+})();
+
+/* ============================================================
+   03 · 等高线与梯度
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('gradCv');
+  if(!cv) return;
+  const W = 560, H = 380;
+  const xr = 3.6, yr = 2.0;
+  const cx = W/2, cy = H/2;
+  const scale = Math.min((W-90)/(2*xr), (H-70)/(2*yr));
+  const toX = w1 => cx + w1*scale;
+  const toY = w2 => cy - w2*scale;
+
+  let mw = [2.2, 1.1];
+
+  function draw(ctx){
+    ctx.clearRect(0,0,W,H);
+
+    // 坐标轴
+    ctx.strokeStyle = '#F0F2F5'; ctx.lineWidth = 1;
+    for(let i=-3;i<=3;i++){
+      ctx.beginPath(); ctx.moveTo(toX(i), toY(-yr)); ctx.lineTo(toX(i), toY(yr)); ctx.stroke();
+    }
+    for(let j=-2;j<=2;j++){
+      ctx.beginPath(); ctx.moveTo(toX(-xr), toY(j)); ctx.lineTo(toX(xr), toY(j)); ctx.stroke();
+    }
+    ctx.strokeStyle = '#D0D5DD';
+    ctx.beginPath();
+    ctx.moveTo(toX(-xr), cy); ctx.lineTo(toX(xr), cy);
+    ctx.moveTo(cx, toY(-yr)); ctx.lineTo(cx, toY(yr));
+    ctx.stroke();
+
+    // 等高线：w1^2 + 4w2^2 = c
+    const levels = [0.6, 1.8, 3.6, 6, 9, 12.5];
+    levels.forEach((c,i)=>{
+      const a = Math.sqrt(c), b = Math.sqrt(c)/2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, a*scale, b*scale, 0, 0, 6.2832);
+      ctx.strokeStyle = 'rgba(79,70,229,' + (0.30 - i*0.035).toFixed(3) + ')';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    });
+
+    // 鼠标位置的梯度箭头
+    const g = [2*mw[0], 8*mw[1]];
+    const norm = Math.hypot(g[0], g[1]) || 1;
+    const len = 54;
+    const ex = toX(mw[0]) - (g[0]/norm)*len;
+    const ey = toY(mw[1]) + (g[1]/norm)*len;
+
+    ctx.beginPath();
+    ctx.moveTo(toX(mw[0]), toY(mw[1]));
+    ctx.lineTo(ex, ey);
+    ctx.strokeStyle = '#4F46E5';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 箭头
+    const ang = Math.atan2(ey-toY(mw[1]), ex-toX(mw[0]));
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - 9*Math.cos(ang-0.4), ey - 9*Math.sin(ang-0.4));
+    ctx.lineTo(ex - 9*Math.cos(ang+0.4), ey - 9*Math.sin(ang+0.4));
+    ctx.closePath();
+    ctx.fillStyle = '#4F46E5';
+    ctx.fill();
+
+    // 点
+    ctx.beginPath();
+    ctx.arc(toX(mw[0]), toY(mw[1]), 5, 0, 6.2832);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = '#4F46E5'; ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 标注
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.fillStyle = '#98A2B3';
+    ctx.textAlign = 'center';
+    ctx.fillText('w₁', W-22, cy - 8);
+    ctx.textAlign = 'left';
+    ctx.fillText('w₂', cx + 8, 14);
+    ctx.fillStyle = 'rgba(79,70,229,.75)';
+    ctx.fillText('L = ' + (mw[0]*mw[0] + 4*mw[1]*mw[1]).toFixed(1), 14, 20);
+
+    const v = document.getElementById('gradVec');
+    if(v) v.textContent = '(' + (2*mw[0]).toFixed(1) + ', ' + (8*mw[1]).toFixed(1) + ')';
+  }
+
+  const inst = mount(cv, W, H, draw);
+
+  cv.addEventListener('mousemove', e=>{
+    const r = cv.getBoundingClientRect();
+    const px = (e.clientX - r.left)/r.width * W;
+    const py = (e.clientY - r.top)/r.height * H;
+    mw = [ clamp((px-cx)/scale, -xr+0.2, xr-0.2), clamp((cy-py)/scale, -yr+0.2, yr-0.2) ];
+    inst.redraw();
+  });
+  cv.style.cursor = 'crosshair';
+})();
+
+/* ============================================================
+   04 · 一维梯度下降
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('descCv');
+  if(!cv) return;
+  const W = 720, H = 340;
+  const f = w => (w-3.2)*(w-3.2) + 0.8;
+  const g = w => 2*(w-3.2);
+  const wmin = -0.4, wmax = 6.8, ymin = 0, ymax = 11;
+  const pad = { l: 52, r: 22, t: 20, b: 38 };
+  const sx = w => pad.l + (w-wmin)/(wmax-wmin)*(W-pad.l-pad.r);
+  const sy = v => (H-pad.b) - (v-ymin)/(ymax-ymin)*(H-pad.t-pad.b);
+
+  let lr = 0.30;
+  let path = [0.2];
+  let lrHistory = [];
+  let playing = false;
+  let timer = null;
+  const MAXSTEP = 26;
+
+  function curW(){ return path[path.length-1]; }
+
+  function draw(ctx){
+    axes(ctx, W, H, pad);
+
+    // y 轴刻度
+    ctx.font = '9.5px ui-monospace, Consolas, monospace';
+    ctx.fillStyle = '#B9C0CE';
+    ctx.textAlign = 'right';
+    [4, 8].forEach(v=>{ ctx.fillText(String(v), pad.l-8, sy(v)+3); });
+    ctx.textAlign = 'left';
+
+    // 曲线
+    ctx.beginPath();
+    for(let i=0;i<=240;i++){
+      const w = wmin + (wmax-wmin)*i/240;
+      const X = sx(w), Y = sy(f(w));
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = '#4F46E5'; ctx.lineWidth = 2; ctx.stroke();
+
+    // 谷底线 + 标注
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.fillStyle = 'rgba(79,70,229,.55)';
+    ctx.textAlign = 'center';
+    ctx.fillText('w* = 3.2', sx(3.2), H-pad.b+20);
+    ctx.textAlign = 'left';
+
+    // 谷底竖线
+    ctx.beginPath();
+    ctx.moveTo(sx(3.2), sy(0)); ctx.lineTo(sx(3.2), sy(0.8));
+    ctx.strokeStyle = '#C7D2FE'; ctx.setLineDash([4,4]); ctx.lineWidth = 1; ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 轨迹
+    if(path.length > 1){
+      ctx.beginPath();
+      ctx.moveTo(sx(path[0]), sy(f(path[0])));
+      for(let i=1;i<path.length;i++) ctx.lineTo(sx(path[i]), sy(f(path[i])));
+      ctx.strokeStyle = 'rgba(79,70,229,.35)';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+    // 历史点
+    for(let i=0;i<path.length-1;i++){
+      const w = path[i];
+      if(w < wmin-0.5 || w > wmax+0.5) continue;
+      ctx.beginPath();
+      ctx.arc(sx(w), sy(f(w)), 3.4, 0, 6.2832);
+      ctx.fillStyle = 'rgba(129,140,248,.55)';
+      ctx.fill();
+    }
+
+    // 当前点
+    const w = curW();
+    const inRange = w >= wmin-0.5 && w <= wmax+0.5 && f(w) <= ymax+2;
+    if(inRange){
+      const X = sx(w), Y = sy(f(w));
+      ctx.beginPath(); ctx.arc(X, Y, 15, 0, 6.2832);
+      ctx.fillStyle = 'rgba(79,70,229,.10)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(X, Y, 7, 0, 6.2832);
+      ctx.fillStyle = '#4F46E5'; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+      // 梯度方向小箭头
+      const slope = g(w);
+      const dir = -Math.sign(slope || 1);
+      ctx.beginPath();
+      ctx.moveTo(X, Y + 20);
+      ctx.lineTo(X + dir*30, Y + 20);
+      ctx.strokeStyle = 'rgba(79,70,229,.45)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4,3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      ctx.font = '600 12px ui-monospace, Consolas, monospace';
+      ctx.fillStyle = '#E05252';
+      ctx.textAlign = 'center';
+      ctx.fillText('发散：w 已飞出画面', W/2, 40);
+      ctx.textAlign = 'left';
+    }
+
+    // 轴标签
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.fillStyle = '#98A2B3';
+    ctx.fillText('w', W-pad.r, H-pad.b + 22);
+    ctx.fillText('L', pad.l - 30, pad.t + 8);
+
+    const tEl = document.getElementById('descT');
+    if(tEl){
+      tEl.textContent = path.length - 1;
+      document.getElementById('descW').textContent = w.toFixed(3);
+      document.getElementById('descL').textContent = f(w).toFixed(3);
+      const step = -lr*g(w);
+      document.getElementById('descStep').textContent =
+        (Math.abs(step) > 99 ? step.toFixed(0) : step.toFixed(3));
+    }
+  }
+
+  const inst = mount(cv, W, H, draw);
+
+  function step(){
+    if(path.length > MAXSTEP) return;
+    const w = curW();
+    const next = w - lr*g(w);
+    path.push(next);
+    inst.redraw();
+    if(path.length > MAXSTEP) stop();
+  }
+  function stop(){
+    playing = false;
+    if(timer){ clearInterval(timer); timer = null; }
+    const b = document.getElementById('descPlay');
+    if(b) b.textContent = '▶ 继续';
+  }
+  function play(){
+    if(playing) { stop(); return; }
+    if(path.length > MAXSTEP) path = [0.2];
+    playing = true;
+    document.getElementById('descPlay').textContent = '❚❚ 暂停';
+    timer = setInterval(step, 320);
+  }
+
+  document.getElementById('descPlay').onclick = play;
+  document.getElementById('descStepBtn').onclick = ()=>{ stop(); step(); };
+  document.getElementById('descReset').onclick = ()=>{
+    stop(); path = [0.2];
+    document.getElementById('descPlay').textContent = '▶ 开始下降';
+    inst.redraw();
+  };
+  document.getElementById('descLr').addEventListener('input', e=>{
+    lr = +e.target.value;
+    document.getElementById('descLrV').textContent = lr.toFixed(2);
+    path = [0.2];
+    stop();
+    document.getElementById('descPlay').textContent = '▶ 开始下降';
+    inst.redraw();
+  });
+  document.querySelectorAll('[data-lr]').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('[data-lr]').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      lr = +b.dataset.lr;
+      document.getElementById('descLr').value = lr;
+      document.getElementById('descLrV').textContent = lr.toFixed(2);
+      path = [0.2];
+      stop();
+      document.getElementById('descPlay').textContent = '▶ 开始下降';
+      inst.redraw();
+    };
+  });
+})();
+
+/* ============================================================
+   05 · 三条轨迹
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('fateCv');
+  if(!cv) return;
+  const W = 720, H = 300;
+  const f = w => (w-3.2)*(w-3.2) + 0.8;
+  const g = w => 2*(w-3.2);
+  const wmin = -0.4, wmax = 6.8, ymin = 0, ymax = 11;
+  const pad = { l: 52, r: 22, t: 20, b: 38 };
+  const sx = w => pad.l + (w-wmin)/(wmax-wmin)*(W-pad.l-pad.r);
+  const sy = v => (H-pad.b) - (v-ymin)/(ymax-ymin)*(H-pad.t-pad.b);
+
+  const runs = [
+    { lr: 0.04, color: '#A5B4FC', label: 'η=0.04' },
+    { lr: 0.30, color: '#4F46E5', label: 'η=0.30' },
+    { lr: 1.06, color: '#E05252', label: 'η=1.06' }
+  ];
+  runs.forEach(r=>{
+    r.path = [0.2];
+    let w = 0.2;
+    for(let i=0;i<22;i++){ w = w - r.lr*g(w); r.path.push(w); }
+  });
+  let prog = 0, timer = null;
+
+  function draw(ctx){
+    axes(ctx, W, H, pad);
+    ctx.beginPath();
+    for(let i=0;i<=240;i++){
+      const w = wmin + (wmax-wmin)*i/240;
+      const X = sx(w), Y = sy(f(w));
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = '#D0D5DD'; ctx.lineWidth = 1.6; ctx.stroke();
+
+    runs.forEach(r=>{
+      const n = Math.min(r.path.length - 1, Math.floor(prog));
+      if(n < 1) return;
+      const PX = i => sx(clamp(r.path[i], wmin+0.06, wmax-0.06));
+      const PY = i => sy(clamp(f(r.path[i]), ymin+0.05, ymax-0.15));
+      // 分段绘制：越早的段越实，让"来回跳"看得出层次
+      for(let i=0;i<n;i++){
+        ctx.globalAlpha = 0.95 - (i/Math.max(n,1))*0.6;
+        ctx.beginPath();
+        ctx.moveTo(PX(i), PY(i));
+        ctx.lineTo(PX(i+1), PY(i+1));
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = r.lr > 1 ? 1.4 : 2;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // 途经点
+      for(let i=1;i<n;i++){
+        ctx.beginPath();
+        ctx.arc(PX(i), PY(i), 2.2, 0, 6.2832);
+        ctx.fillStyle = r.color;
+        ctx.globalAlpha = 0.5;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.arc(PX(n), PY(n), 4, 0, 6.2832);
+      ctx.fillStyle = r.color;
+      ctx.fill();
+    });
+
+    // 发散标注
+    const last = runs[2].path[Math.min(runs[2].path.length-1, Math.floor(prog))];
+    if(prog > 4 && Math.abs(last) > 100){
+      ctx.font = '600 10.5px ui-monospace, Consolas, monospace';
+      ctx.fillStyle = '#E05252';
+      ctx.textAlign = 'right';
+      ctx.fillText('幅度逐次放大 → 发散', W-pad.r-4, pad.t+12);
+      ctx.textAlign = 'left';
+    }
+
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.fillStyle = '#98A2B3';
+    ctx.fillText('w', W-pad.r, H-pad.b + 22);
+    ctx.fillText('L', pad.l - 30, pad.t + 8);
+  }
+
+  const inst = mount(cv, W, H, draw);
+
+  function play(){
+    if(timer) clearInterval(timer);
+    prog = 0;
+    timer = setInterval(()=>{
+      prog += 0.55;
+      inst.redraw();
+      if(prog > 23){ clearInterval(timer); timer = null; }
+    }, 90);
+  }
+  document.getElementById('fatePlay').onclick = play;
+  play();
+})();
+
+/* ============================================================
+   06 · 三种批量
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('batchCv');
+  if(!cv) return;
+  const W = 560, H = 352;
+  const xr = 3.8, yr = 2.2;
+  const cx = W/2, cy = H/2;
+  const scale = Math.min((W-80)/(2*xr), (H-80)/(2*yr));
+  const toX = a => cx + a*scale;
+  const toY = b => cy - b*scale;
+
+  function build(noise){
+    const R = mulberry32(20261018 + Math.round(noise*100));
+    let w = [-3.1, 1.75];
+    const pts = [[...w]];
+    for(let i=0;i<26;i++){
+      let g1 = w[0], g2 = 4*w[1];
+      g1 += (R()-0.5)*2*noise;
+      g2 += (R()-0.5)*2*noise;
+      w = [ w[0] - 0.115*g1, w[1] - 0.115*g2 ];
+      pts.push([...w]);
+    }
+    return pts;
+  }
+  const modes = {
+    bgd:  { pts: build(0),    color: '#4F46E5', note: '全量梯度：路径平滑，直指谷底' },
+    mini: { pts: build(0.30), color: '#7C3AED', note: 'mini-batch：轻微抖动，整体向下' },
+    sgd:  { pts: build(1.05), color: '#E05252', note: '单样本 SGD：抖得厉害，但方向仍对' }
+  };
+  let cur = 'bgd';
+
+  function draw(ctx){
+    ctx.clearRect(0,0,W,H);
+
+    ctx.strokeStyle = '#F0F2F5'; ctx.lineWidth = 1;
+    for(let i=-3;i<=3;i++){ ctx.beginPath(); ctx.moveTo(toX(i), toY(-yr)); ctx.lineTo(toX(i), toY(yr)); ctx.stroke(); }
+    for(let j=-2;j<=2;j++){ ctx.beginPath(); ctx.moveTo(toX(-xr), toY(j)); ctx.lineTo(toX(xr), toY(j)); ctx.stroke(); }
+
+    const levels = [0.8, 2.2, 4.2, 6.8, 9.8, 13.2];
+    levels.forEach((c,i)=>{
+      const a = Math.sqrt(c), b = Math.sqrt(c)/2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, a*scale, b*scale, 0, 0, 6.2832);
+      ctx.strokeStyle = 'rgba(79,70,229,' + (0.26 - i*0.03).toFixed(3) + ')';
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+    });
+
+    ctx.strokeStyle = '#D0D5DD'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(toX(-xr), cy); ctx.lineTo(toX(xr), cy);
+    ctx.moveTo(cx, toY(-yr)); ctx.lineTo(cx, toY(yr));
+    ctx.stroke();
+
+    const m = modes[cur];
+    ctx.beginPath();
+    m.pts.forEach((p,i)=>{
+      const X = toX(p[0]), Y = toY(p[1]);
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    });
+    ctx.strokeStyle = m.color;
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    m.pts.forEach((p,i)=>{
+      ctx.beginPath();
+      ctx.arc(toX(p[0]), toY(p[1]), i===0 ? 5 : 2.4, 0, 6.2832);
+      ctx.fillStyle = i===0 ? '#fff' : m.color;
+      ctx.fill();
+      if(i===0){ ctx.strokeStyle = m.color; ctx.lineWidth = 2; ctx.stroke(); }
+    });
+
+    // 终点
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, 6.2832);
+    ctx.fillStyle = '#0E9F6E';
+    ctx.fill();
+
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.fillStyle = '#98A2B3';
+    ctx.textAlign = 'center';
+    ctx.fillText('w₁', W-20, cy-8);
+    ctx.textAlign = 'left';
+    ctx.fillText('w₂', cx+8, 14);
+
+    const note = document.getElementById('batchNote');
+    if(note){ note.textContent = m.note; note.style.color = m.color; }
+  }
+
+  const inst = mount(cv, W, H, draw);
+  document.querySelectorAll('[data-batch]').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('[data-batch]').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      cur = b.dataset.batch;
+      inst.redraw();
+    };
+  });
+})();
+
+/* ============================================================
+   目录高亮 + 阅读进度
+   ============================================================ */
+(function(){
+  const bar = document.getElementById('progress');
+  const links = [].slice.call(document.querySelectorAll('.toc a'));
+  const secs = links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  function onScroll(){
+    const h = document.documentElement;
+    if(bar) bar.style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight||1)*100).toFixed(2)+'%';
+    let cur = 0;
+    secs.forEach((s,i)=>{ if(s.getBoundingClientRect().top <= 140) cur = i; });
+    links.forEach((a,i)=>a.classList.toggle('on', i===cur));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+
+/* 进场 */
+(function(){
+  const els = [].slice.call(document.querySelectorAll('section, .panel'));
+  els.forEach(el=>el.classList.add('rise'));
+  let queued = false;
+  function reveal(){
+    queued = false;
+    const vh = window.innerHeight || 800;
+    els.forEach(el=>{
+      if(el.classList.contains('in')) return;
+      const r = el.getBoundingClientRect();
+      if(r.top < vh-20 && r.bottom > -20) el.classList.add('in');
+    });
+  }
+  function onScroll(){ if(!queued){ queued = true; requestAnimationFrame(reveal); } }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll);
+  reveal();
+  setTimeout(reveal, 120);
+})();
+</script>
+
+</body>
+</html>
