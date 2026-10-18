@@ -43,9 +43,10 @@
   }
   /* 顶部阅读进度 */
   #progress{
-    position:fixed;top:0;left:0;height:2px;width:0;z-index:99;
+    position:fixed;top:0;left:0;height:2px;width:100%;z-index:99;
     background:linear-gradient(90deg,#4F46E5,#7C3AED);
-    transition:width .12s linear;
+    transform:scaleX(0);transform-origin:0 50%;
+    will-change:transform;
   }
   /* 导航 */
   .nav{
@@ -764,7 +765,7 @@ function mount(cv, W, H, draw){
     const cssW = Math.round(contentWidth(parent));
     if(!cssW) return;
     lastW = cssW;
-    const dpr = Math.min(window.devicePixelRatio||1, 2);
+    const dpr = Math.min(window.devicePixelRatio||1, 1.5);
     const cssH = cssW * H / W;
     cv.style.width = '100%';
     cv.style.height = cssH + 'px';
@@ -1379,40 +1380,70 @@ function axes(ctx, W, H, pad, xr, yr, sx, sy){
 /* ============================================================
    目录高亮 + 阅读进度
    ============================================================ */
+/* 目录高亮 + 阅读进度 + 进场
+   合成一个 rAF 节流回调：先读完再写，进场结束后不再读 DOM，
+   避免滚动时读-写交替造成的强制重排。 */
 (function(){
   const bar = document.getElementById('progress');
   const links = [].slice.call(document.querySelectorAll('.toc a'));
   const secs = links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
-  function onScroll(){
-    const h = document.documentElement;
-    if(bar) bar.style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight||1)*100).toFixed(2)+'%';
-    let cur = 0;
-    secs.forEach((s,i)=>{ if(s.getBoundingClientRect().top <= 140) cur = i; });
-    links.forEach((a,i)=>a.classList.toggle('on', i===cur));
-  }
-  window.addEventListener('scroll', onScroll, {passive:true});
-  onScroll();
-})();
-
-/* 进场 */
-(function(){
   const els = [].slice.call(document.querySelectorAll('section, .panel'));
   els.forEach(el=>el.classList.add('rise'));
-  let queued = false;
-  function reveal(){
+
+  const root = document.documentElement;
+  let tops = [], pending = true, queued = false, lastCur = -1;
+
+  function measure(){
+    const y = window.pageYOffset;
+    tops = secs.map(s=>s.getBoundingClientRect().top + y);
+    pending = els.some(el=>!el.classList.contains('in'));
     queued = false;
-    const vh = window.innerHeight || 800;
-    els.forEach(el=>{
-      if(el.classList.contains('in')) return;
-      const r = el.getBoundingClientRect();
-      if(r.top < vh-20 && r.bottom > -20) el.classList.add('in');
-    });
+    tick();
   }
-  function onScroll(){ if(!queued){ queued = true; requestAnimationFrame(reveal); } }
-  window.addEventListener('scroll', onScroll, {passive:true});
-  window.addEventListener('resize', onScroll);
-  reveal();
-  setTimeout(reveal, 120);
+
+  function tick(){
+    queued = false;
+    const y = window.pageYOffset;
+    const vh = window.innerHeight || 800;
+
+    // ---- 读 ----
+    let show = null;
+    if(pending){
+      show = [];
+      for(const el of els){
+        if(el.classList.contains('in')) continue;
+        const r = el.getBoundingClientRect();
+        if(r.top < vh-20 && r.bottom > -20) show.push(el);
+      }
+    }
+
+    // ---- 写 ----
+    if(bar){
+      const max = root.scrollHeight - vh;
+      bar.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, y/max) : 0).toFixed(4) + ')';
+    }
+    let cur = 0;
+    for(let i=0;i<tops.length;i++) if(tops[i] - 140 <= y) cur = i;
+    if(cur !== lastCur){
+      lastCur = cur;
+      for(let i=0;i<links.length;i++) links[i].classList.toggle('on', i===cur);
+    }
+
+    if(show){
+      for(const el of show) el.classList.add('in');
+      if(show.length) pending = els.some(el=>!el.classList.contains('in'));
+    }
+  }
+
+  window.addEventListener('scroll', function(){
+    if(!queued){ queued = true; requestAnimationFrame(tick); }
+  }, {passive:true});
+  window.addEventListener('resize', measure, {passive:true});
+  window.addEventListener('load', measure);
+
+  measure();
+  setTimeout(measure, 150);
+  setTimeout(measure, 800);
 })();
 </script>
 

@@ -43,9 +43,10 @@
   }
   /* 顶部阅读进度 */
   #progress{
-    position:fixed;top:0;left:0;height:2px;width:0;z-index:99;
+    position:fixed;top:0;left:0;height:2px;width:100%;z-index:99;
     background:linear-gradient(90deg,#4F46E5,#7C3AED);
-    transition:width .12s linear;
+    transform:scaleX(0);transform-origin:0 50%;
+    will-change:transform;
   }
   /* 导航 */
   .nav{
@@ -1171,6 +1172,7 @@ const NET = (function(){
     paintInput(px);
     updateBars(0);
     setPhase('READY', '样本 '+d+' 已载入 · 点「运行」开始前向传播');
+    renderOnce();
   }
 
   /* ---------- 绘制 ---------- */
@@ -1185,7 +1187,6 @@ const NET = (function(){
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 0.55;
-    ctx.shadowColor = 'rgba(79,70,229,.5)'; ctx.shadowBlur = 22;
     ctx.drawImage(gcv, g.x, g.y, g.s, g.s);
     ctx.restore();
 
@@ -1452,6 +1453,7 @@ const NET = (function(){
     if(st.t >= T.done) st.t = 0;
     st.playing = true;
     btnPlay.textContent = '■ 运行中';
+    start();
   };
   btnStep.onclick = ()=>{
     const marks = [1, T.scan, T.p1, T.p2, T.p3, T.a3+300, T.done];
@@ -1464,6 +1466,7 @@ const NET = (function(){
       updateBars(1);
     }
     btnPlay.textContent = '▶ 运行一次前向传播';
+    renderOnce();
   };
   btnSpeed.onclick = ()=>{
     si = (si+1) % speeds.length;
@@ -1494,7 +1497,7 @@ const NET = (function(){
     const cssW = Math.round(stage.getBoundingClientRect().width);
     if(!cssW) return;
     lastW = cssW;
-    const dpr = Math.min(window.devicePixelRatio||1, 2);
+    const dpr = Math.min(window.devicePixelRatio||1, 1.5);
     const cssH = cssW * H / W;
     cv.style.height = cssH + 'px';
     cv.width = Math.round(cssW*dpr);
@@ -1502,6 +1505,7 @@ const NET = (function(){
     ctx = cv.getContext('2d');
     const k = dpr * cssW / W;
     ctx.setTransform(k,0,0,k,0,0);
+    if(st.data) draw(performance.now());
   }
   fit();
   requestAnimationFrame(fit);
@@ -1514,9 +1518,16 @@ const NET = (function(){
   }
   window.addEventListener('resize', fit);
 
-  /* ---------- 主循环 ---------- */
+  /* ---------- 主循环 ----------
+     只在「正在播放 + 画布在视口内」时逐帧重绘，其余时间完全静止。
+     原来是无条件 requestAnimationFrame 死循环：滚到第 5 节、画布早已
+     离开屏幕，它仍在以 60fps 重画整张网络图（每帧约 7ms），
+     把 16.7ms 的帧预算吃掉一半，任何抖动都会掉帧。 */
   let last = performance.now();
-  function loop(now){
+  let rafId = 0, running = false, onScreen = true;
+
+  function frame(now){
+    rafId = 0;
     const dt = Math.min(now-last, 64);
     last = now;
     if(st.playing){
@@ -1531,17 +1542,42 @@ const NET = (function(){
       }
     }
     syncPhase();
-    // 柱状图跟随
     if(st.data){
       const f = st.t >= T.done ? 1 : clamp((st.t - (T.a3+200)) / 700, 0, 1);
       const q = Math.round(f*20)/20;
       if(q !== barsShown){ barsShown = q; updateBars(q); }
     }
     draw(now);
-    requestAnimationFrame(loop);
+    if(st.playing && onScreen) rafId = requestAnimationFrame(frame);
+    else running = false;
   }
+  function start(){
+    if(running || !onScreen) return;
+    running = true;
+    last = performance.now();
+    rafId = requestAnimationFrame(frame);
+  }
+  function stop(){
+    running = false;
+    if(rafId){ cancelAnimationFrame(rafId); rafId = 0; }
+  }
+  function renderOnce(){ draw(performance.now()); }
+
+  // 滚出视口就停，回到视口补一帧
+  if(window.IntersectionObserver){
+    new IntersectionObserver(function(es){
+      onScreen = es[0].isIntersecting;
+      if(onScreen){ st.playing ? start() : renderOnce(); }
+      else stop();
+    }, {rootMargin:'140px'}).observe(cv);
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden) stop();
+    else if(st.playing) start();
+  });
+
   load(3, 0);
-  requestAnimationFrame(loop);
+  renderOnce();
 
   return { load, isPlaying: ()=>st.playing };
 })();
@@ -1703,45 +1739,71 @@ const NET = (function(){
 /* ============================================================
    阅读进度 + 目录高亮
    ============================================================ */
+/* 阅读进度 + 目录高亮 + 进场
+   原来是三个独立监听，滚动时各自读一遍 getBoundingClientRect，
+   与进度条的样式写入交替触发强制重排。现在合并成一个 rAF 节流回调：
+   先读完再写，且进场全部完成后不再读 DOM。 */
 (function(){
   const bar = document.getElementById('progress');
   const links = [...document.querySelectorAll('.toc a')];
   const secs = links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
-
-  function onScroll(){
-    const h = document.documentElement;
-    const p = h.scrollTop / (h.scrollHeight - h.clientHeight || 1);
-    bar.style.width = (p*100).toFixed(2)+'%';
-
-    let cur = 0;
-    secs.forEach((s,i)=>{
-      if(s.getBoundingClientRect().top <= 140) cur = i;
-    });
-    links.forEach((a,i)=>a.classList.toggle('on', i===cur));
-  }
-  window.addEventListener('scroll', onScroll, {passive:true});
-  onScroll();
-})();
-
-/* 进场 */
-(function(){
   const els = [...document.querySelectorAll('section, .panel')];
   els.forEach(el=>el.classList.add('rise'));
-  let queued=false;
-  function reveal(){
-    queued=false;
-    const vh=window.innerHeight||800;
-    els.forEach((el)=>{
-      if(el.classList.contains('in')) return;
-      const r=el.getBoundingClientRect();
-      if(r.top < vh-20 && r.bottom > -20) el.classList.add('in');
-    });
+
+  const root = document.documentElement;
+  let tops = [], pending = true, queued = false, lastCur = -1;
+
+  function measure(){
+    const y = window.pageYOffset;
+    tops = secs.map(s=>s.getBoundingClientRect().top + y);
+    pending = els.some(el=>!el.classList.contains('in'));
+    queued = false;
+    tick();
   }
-  function onScroll(){ if(!queued){ queued=true; requestAnimationFrame(reveal); } }
-  window.addEventListener('scroll',onScroll,{passive:true});
-  window.addEventListener('resize',onScroll);
-  reveal();
-  setTimeout(reveal,120);
+
+  function tick(){
+    queued = false;
+    const y = window.pageYOffset;
+    const vh = window.innerHeight || 800;
+
+    // ---- 读 ----
+    let show = null;
+    if(pending){
+      show = [];
+      for(const el of els){
+        if(el.classList.contains('in')) continue;
+        const r = el.getBoundingClientRect();
+        if(r.top < vh-20 && r.bottom > -20) show.push(el);
+      }
+    }
+
+    // ---- 写 ----
+    if(bar){
+      const max = root.scrollHeight - vh;
+      bar.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, y/max) : 0).toFixed(4) + ')';
+    }
+    let cur = 0;
+    for(let i=0;i<tops.length;i++) if(tops[i] - 140 <= y) cur = i;
+    if(cur !== lastCur){
+      lastCur = cur;
+      for(let i=0;i<links.length;i++) links[i].classList.toggle('on', i===cur);
+    }
+
+    if(show){
+      for(const el of show) el.classList.add('in');
+      if(show.length) pending = els.some(el=>!el.classList.contains('in'));
+    }
+  }
+
+  window.addEventListener('scroll', function(){
+    if(!queued){ queued = true; requestAnimationFrame(tick); }
+  }, {passive:true});
+  window.addEventListener('resize', measure, {passive:true});
+  window.addEventListener('load', measure);
+
+  measure();
+  setTimeout(measure, 150);
+  setTimeout(measure, 800);
 })();
 </script>
 </body>
