@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="卷积：翻转、平移、相乘、相加，从离散滑动到连续叠加，再到图像上的 3×3 核。" />
+<title>01 · 卷积 · Apiginchaosr</title>
+<style>
+
+  :root{
+    --bg:#F4F5F8;
+    --card:#FFFFFF;
+    --ink:#0C111D;
+    --body:#475467;
+    --muted:#98A2B3;
+    --line:#EAECF0;
+    --line-strong:#D0D5DD;
+    --indigo:#4F46E5;
+    --indigo-2:#4338CA;
+    --indigo-soft:#EEF0FF;
+    --cyan:#4F46E5;
+    --violet:#7C3AED;
+    --pink:#E05252;
+    --amber:#B54708;
+    --green:#0E9F6E;
+    --radius:18px;
+    --shadow-sm:0 1px 2px rgba(16,24,40,.04);
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 14px 34px -16px rgba(16,24,40,.14);
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Inter,sans-serif;
+    --mono:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;
+    --math:"Cambria Math","Latin Modern Math",Cambria,Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.78;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(820px 460px at 8% -10%, rgba(79,70,229,.10), transparent 62%),
+      radial-gradient(700px 400px at 94% 0%, rgba(14,159,110,.08), transparent 60%);
+  }
+  /* 顶部阅读进度 */
+  #progress{
+    position:fixed;top:0;left:0;height:2px;width:100%;z-index:99;
+    background:linear-gradient(90deg,#4F46E5,#7C3AED);
+    transform:scaleX(0);transform-origin:0 50%;
+    will-change:transform;
+  }
+  /* 导航 */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 clamp(18px,4vw,56px);height:62px;
+    background:rgba(244,245,248,.82);backdrop-filter:blur(14px) saturate(160%);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:650;font-size:14.5px;letter-spacing:-.02em}
+  .logo-mark{
+    width:27px;height:27px;border-radius:8px;display:grid;place-items:center;flex:none;
+    background:linear-gradient(145deg,#6366F1,#4338CA);
+    box-shadow:0 3px 10px -2px rgba(79,70,229,.45);
+  }
+  .logo-mark::before{content:"◈";color:#fff;font-size:12px;line-height:1}
+  .logo-txt{font-family:var(--sans);font-size:14.5px;letter-spacing:-.02em}
+  .nav-r{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--body)}
+  .nav-r a{color:var(--body);text-decoration:none;transition:color .25s;display:inline-flex;align-items:center;gap:6px}
+  .nav-r a:hover{color:var(--indigo)}
+  .chip{
+    border:1px solid var(--line);background:#fff;border-radius:100px;
+    padding:5px 12px;font-size:10.5px;letter-spacing:.08em;color:var(--muted);
+    text-transform:uppercase;box-shadow:var(--shadow-sm);
+  }
+
+  /* 布局：侧栏 + 正文 */
+  .shell{
+    display:grid;grid-template-columns:200px minmax(0,1fr);
+    gap:clamp(24px,4vw,64px);
+    max-width:1200px;margin:0 auto;padding:0 clamp(18px,4vw,56px);
+    align-items:start;
+  }
+  .toc{position:sticky;top:88px;padding:30px 0 40px;font-size:12px}
+  .toc-h{color:var(--muted);letter-spacing:.18em;font-size:9.5px;text-transform:uppercase;margin-bottom:12px}
+  .toc a{
+    display:block;color:var(--body);text-decoration:none;
+    padding:8px 0 8px 12px;border-left:2px solid var(--line);
+    transition:all .25s;line-height:1.5;
+  }
+  .toc a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+  .toc a.on{color:var(--indigo);border-left-color:var(--indigo);font-weight:550}
+  @media (max-width: 900px){
+    .shell{display:block;max-width:none}
+    .toc{display:none}
+  }
+
+  main{padding-bottom:40px;min-width:0}
+
+  /* 章节头 */
+  .chap-head{padding:clamp(36px,6vw,64px) 0 clamp(24px,4vw,36px)}
+  .crumb{font-size:10.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:20px}
+  .crumb span{color:var(--indigo)}
+  h1{font-size:clamp(30px,4.6vw,46px);line-height:1.18;letter-spacing:-.03em;font-weight:650;margin-bottom:18px}
+  h1 em{
+    font-style:normal;
+    background:linear-gradient(100deg,#4F46E5,#7C3AED 70%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .abstract{color:var(--body);font-size:clamp(14px,1.6vw,15.5px);max-width:60ch}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .tag{
+    font-size:10.5px;padding:4px 10px;border-radius:100px;
+    background:var(--indigo-soft);color:var(--indigo-2);font-weight:500;
+  }
+  /* 参考来源 */
+  .src{
+    display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-top:18px;padding:8px 16px 8px 8px;border-radius:100px;
+    border:1px solid var(--line);background:#fff;text-decoration:none;
+    font-size:12.5px;line-height:1.4;color:var(--body);
+    transition:border-color .2s,box-shadow .2s,background .2s;
+  }
+  .src:hover{border-color:#C7CDFB;background:#FDFDFF;box-shadow:0 6px 16px -8px rgba(79,70,229,.4)}
+  .src .src-a:hover{text-decoration:underline;text-underline-offset:2px}
+  .src .src-k{
+    font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);
+    background:var(--indigo-soft);padding:3px 8px;border-radius:100px;font-weight:600;
+  }
+  .src .src-t b{color:var(--ink);font-weight:600}
+  .src .src-a{color:var(--indigo);font-weight:500;white-space:nowrap;text-decoration:none}
+  .src .src-a + .src-a{padding-left:10px;border-left:1px solid var(--line);line-height:1.1}
+  .src .src-links{display:inline-flex;align-items:center;gap:0;white-space:nowrap}
+
+
+  /* 第一层滤波器 */
+  .fl-wrap{
+    display:grid;grid-template-columns:auto auto auto;
+    gap:clamp(12px,2.4vw,26px);justify-content:center;align-items:center;
+  }
+  .fl-col{display:grid;gap:8px;justify-items:center}
+  .fl-col canvas{display:block;border-radius:8px;box-shadow:0 0 0 1px var(--line)}
+  .fl-cap{font-size:10.5px;color:var(--muted)}
+  .fl-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+  .fl-tab{
+    width:46px;height:46px;padding:0;border:1px solid var(--line);border-radius:10px;
+    background:#fff;cursor:pointer;display:grid;place-items:center;transition:.18s;
+  }
+  .fl-tab canvas{display:block;border-radius:5px}
+  .fl-tab.on{border-color:var(--indigo);box-shadow:0 0 0 2px var(--indigo-soft)}
+  .fl-tab:hover{border-color:#C7CDFB}
+  @media (max-width:760px){
+    .fl-wrap{grid-template-columns:auto auto}
+    .fl-wrap .fl-col:last-child{grid-column:1/-1}
+  }
+
+  /* 章节 */
+  section{scroll-margin-top:84px;padding:clamp(34px,5vw,52px) 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  .s-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
+  .s-idx{
+    font-family:var(--mono);font-size:11px;color:var(--indigo);
+    background:var(--indigo-soft);border-radius:6px;padding:2px 8px;flex:none;font-weight:600;
+  }
+  h2{font-size:clamp(20px,2.5vw,25px);font-weight:650;letter-spacing:-.025em;line-height:1.4}
+  h3{font-size:15px;font-weight:650;margin:26px 0 10px;color:var(--ink);letter-spacing:-.01em}
+  p{color:var(--body);font-size:14.8px;margin:12px 0;max-width:68ch;line-height:1.85}
+  p b,li b{color:var(--ink);font-weight:600}
+  p .hl{color:var(--indigo);font-weight:500}
+  ul,ol{margin:12px 0 12px 2px;padding-left:20px;max-width:68ch}
+  li{color:var(--body);font-size:14.5px;margin:7px 0;line-height:1.8}
+  code{
+    font-family:var(--mono);font-size:12.8px;background:#F2F4F7;
+    border:1px solid var(--line);padding:1.5px 6px;border-radius:5px;color:#344054;
+  }
+  strong.warn{color:var(--amber);font-weight:600}
+
+  /* 公式 */
+  .formula{
+    font-family:var(--math);font-size:clamp(17px,2vw,20px);letter-spacing:.01em;
+    color:var(--ink);padding:18px 22px;margin:18px 0;
+    border-left:3px solid var(--indigo);border-radius:0 12px 12px 0;
+    background:#F7F8FC;
+    overflow-x:auto;line-height:2.1;
+  }
+  .formula .v{font-style:italic;font-family:var(--math)}
+  .formula .sub{font-size:.72em;vertical-align:-.28em;font-style:italic}
+  .formula .sup{font-size:.72em;vertical-align:.42em}
+  .formula .op{color:var(--muted);padding:0 .3em;font-style:normal}
+  .formula .note{display:block;font-family:var(--sans);font-size:11.5px;color:var(--muted);letter-spacing:.02em;margin-top:6px;font-style:normal;line-height:1.7}
+
+  /* 卡片 */
+  .panel{
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    background:var(--card);box-shadow:var(--shadow);
+    margin:24px 0;position:relative;
+  }
+  .panel-h{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:13px 18px;border-bottom:1px solid var(--line);
+    font-size:11px;letter-spacing:.06em;color:var(--muted);
+  }
+  .panel-h .dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--indigo);margin-right:8px;vertical-align:1px;
+  }
+  .panel-b{padding:clamp(16px,2.4vw,24px)}
+
+  /* 提示块 */
+  .aside{
+    border:1px solid #FEDF89;border-radius:12px;padding:14px 18px;margin:20px 0;
+    background:#FFFAEB;font-size:13.6px;color:#7A4E1E;line-height:1.75;max-width:70ch;
+  }
+  .aside b{color:#B54708}
+  .aside .lbl{font-size:10px;letter-spacing:.14em;color:#B54708;display:block;margin-bottom:5px;text-transform:uppercase;font-weight:600}
+
+  /* 控件 */
+  .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{
+    font-size:12px;font-weight:500;
+    padding:8px 14px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--line-strong);background:#fff;color:var(--body);
+    transition:all .2s;line-height:1.2;
+  }
+  .btn:hover{border-color:#B4BAC6;color:var(--ink);background:#FCFCFD}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600;box-shadow:0 2px 8px -2px rgba(79,70,229,.5)}
+  .btn.primary:hover{background:var(--indigo-2);color:#fff}
+  .btn.on{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+  .btn.sm{padding:5px 10px;font-size:11px}
+  .num-btns{display:flex;gap:5px;flex-wrap:wrap}
+  .num-btns .btn{width:32px;padding:6px 0;text-align:center;font-size:11.5px}
+
+  /* 数字网格 */
+  .grid-wrap{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(16px,3vw,34px);align-items:start}
+  @media (max-width: 700px){.grid-wrap{grid-template-columns:minmax(0,1fr)}}
+  #gridcv{
+    display:block;border-radius:12px;cursor:crosshair;
+    border:1px solid var(--line);box-shadow:0 8px 24px -12px rgba(16,24,40,.18);
+  }
+  .readout{display:grid;gap:8px;font-size:11.5px;color:var(--muted);align-content:start;padding-top:2px}
+  .readout .kv{display:flex;gap:10px;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:6px}
+  .readout .kv b{color:var(--ink);font-weight:600}
+
+  /* 柱状图 */
+  .bars{display:flex;align-items:flex-end;gap:clamp(4px,1vw,10px);padding-top:8px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+  .bar-track{
+    width:100%;height:118px;display:flex;align-items:flex-end;
+    background:#F2F4F7;border-radius:6px;overflow:hidden;
+  }
+  .bar-fill{
+    width:100%;background:linear-gradient(180deg,#818CF8,#4F46E5);
+    border-radius:6px 6px 0 0;transition:height .5s cubic-bezier(.16,1,.3,1);
+    height:0;
+  }
+  .bar-fill.win{background:linear-gradient(180deg,#4F46E5,#3730A3);box-shadow:0 0 12px rgba(79,70,229,.35)}
+  .bar-lbl{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  .bar-val{font-family:var(--mono);font-size:9.5px;color:var(--muted);height:12px}
+
+  /* 神经元 demo */
+  .neu-demo{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:clamp(16px,3vw,30px);align-items:center}
+  @media (max-width: 720px){.neu-demo{grid-template-columns:minmax(0,1fr)}}
+  .neu-rows{display:grid;gap:10px}
+  #smBars{justify-content:flex-start;gap:20px;margin-top:26px !important}
+  #smBars .bar-col{flex:0 0 88px}
+  #smBars .bar-track{height:112px}
+  .neu-row{display:grid;grid-template-columns:max-content 1fr 84px;gap:14px;align-items:center}
+  .neu-x{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+    background:#E4E7EC;outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;border:2px solid #fff;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    border:2px solid #fff;box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;
+  }
+  .neu-w{font-family:var(--mono);font-size:11px;color:var(--indigo);text-align:right}
+  .neu-out{
+    border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;
+    background:#FCFCFD;
+  }
+  .neu-out .big{font-family:var(--mono);font-size:26px;color:var(--indigo);line-height:1.3}
+  .neu-out .lbl{font-size:9.5px;letter-spacing:.05em;color:var(--muted)}
+
+  /* 网络 canvas 面板 */
+  .net-stage{position:relative;background:#FCFCFD}
+  #netcv{display:block;width:100%;height:auto}
+  .net-status{
+    display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);letter-spacing:.02em;min-height:40px;
+  }
+  .net-status .ph{color:var(--indigo);font-weight:600}
+  .net-summary{
+    display:flex;flex-wrap:wrap;gap:22px;padding:14px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .net-summary b{color:var(--ink);font-weight:600}
+  .net-summary .win b{color:var(--indigo)}
+
+  /* 曲线 */
+  .curve-box{position:relative}
+  svg.curve{width:100%;height:auto;display:block;overflow:visible}
+  .curve-lbl{font-family:var(--mono);font-size:9.5px;fill:var(--muted);letter-spacing:.04em}
+
+  /* 流程回顾 */
+  .flow{display:grid;gap:0;margin:22px 0}
+  .flow-step{display:grid;grid-template-columns:26px minmax(0,1fr);gap:16px;padding:14px 0;position:relative}
+  .flow-step:not(:last-child)::before{
+    content:"";position:absolute;left:12.5px;top:38px;bottom:-4px;width:1px;
+    background:linear-gradient(180deg,#C7D2FE,#EEF0FF);
+  }
+  .flow-n{
+    width:26px;height:26px;border-radius:50%;border:1px solid #C7D2FE;
+    display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--indigo);
+    background:#fff;z-index:1;font-weight:600;
+  }
+  .flow-t{font-size:14px;font-weight:650;margin-bottom:3px}
+  .flow-d{font-size:13px;color:var(--body);line-height:1.7}
+  .flow-d code{font-size:12px}
+
+  /* 公式速查 */
+  .cheat{display:grid;gap:10px}
+  .cheat-row{
+    display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;align-items:center;
+    padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;
+  }
+  .cheat-k{font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+  .cheat-v{font-family:var(--math);font-size:15.5px;color:var(--ink);overflow-x:auto;white-space:nowrap}
+  @media (max-width: 640px){
+    .cheat-row{grid-template-columns:minmax(0,1fr);gap:6px}
+    .cheat-v{white-space:normal}
+  }
+
+  .foot-nav{
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    border-top:1px solid var(--line);padding:30px 0 60px;margin-top:20px;
+  }
+  .foot-nav a{
+    font-size:12.5px;color:var(--body);text-decoration:none;
+    border:1px solid var(--line);border-radius:8px;padding:10px 16px;transition:all .25s;background:#fff;
+  }
+  .foot-nav a:hover{color:var(--indigo);border-color:#C7D2FE}
+  .foot-nav a.dim{opacity:.45;pointer-events:none}
+
+  .rise{transform:translateY(14px);transition:transform .55s cubic-bezier(.16,1,.3,1)}
+  .rise.in{transform:none}
+
+  @media (max-width: 620px){
+    .panel-h{flex-direction:column;align-items:flex-start;gap:10px}
+    .num-btns{width:100%}
+    .num-btns .btn{flex:1 1 0;width:auto;padding:6px 0}
+    .nav-r .chip{display:none}
+    h1{font-size:clamp(26px,7vw,32px)}
+    p,li{font-size:14px}
+    .net-summary{gap:14px}
+    #smBars .bar-col{flex:1 1 0;min-width:0}
+  }
+
+
+  /* ---- 第 02 章新增组件 ---- */
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+  .metrics{
+    display:flex;gap:18px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .metrics b{color:var(--ink);font-weight:600;font-family:var(--mono)}
+  .presets{display:flex;gap:6px;flex-wrap:wrap}
+  .tip-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+  .tip{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fff}
+  .tip h4{font-size:13px;font-weight:650;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .tip h4 span{
+    font-size:9.5px;color:var(--indigo);background:var(--indigo-soft);
+    padding:2px 8px;border-radius:100px;font-weight:600;flex:none;
+  }
+  .tip h4 .t-bad{color:#B54708;background:#FEF0C7}
+  .tip h4 .t-good{color:#027A48;background:#ECFDF3}
+  .tip p{font-size:12.5px;color:var(--body);line-height:1.7;margin:0;max-width:none}
+  canvas{display:block}
+  @media (max-width:640px){.tip-grid{grid-template-columns:1fr}}
+
+
+  .cvctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px}
+  .cvctl .k{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .cvctl input[type=range]{flex:1 1 220px;max-width:340px}
+  .cvctl .v{font-family:var(--mono);font-size:11.5px;color:var(--ink);min-width:52px;text-align:right}
+
+  .k3{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:84px}
+  .k3 span{
+    display:grid;place-items:center;height:26px;border-radius:4px;
+    font-family:var(--mono);font-size:10.5px;background:#F2F4F7;color:var(--ink);
+    border:1px solid var(--line);
+  }
+  .k3 span.pos{background:#FEF3E2;border-color:#FADFC0;color:#B45309}
+  .k3 span.neg{background:#EEF0FF;border-color:#DFE2FB;color:#4338CA}
+
+  .imgwrap{display:grid;grid-template-columns:auto auto auto;gap:clamp(14px,2.6vw,30px);align-items:center;justify-content:center}
+  .imgwrap figure{display:grid;gap:8px;justify-items:center;margin:0}
+  .imgwrap figcaption{font-size:10.5px;color:var(--muted)}
+  .imgwrap canvas{display:block;border-radius:8px;box-shadow:0 0 0 1px var(--line)}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+
+  @media (max-width:760px){
+    .imgwrap{grid-template-columns:auto auto}
+    .imgwrap figure:last-child{grid-column:1/-1}
+  }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<header class="nav">
+  <a class="logo" href="../index.html">
+    <span class="logo-mark"></span>
+    <span class="logo-txt">Apiginchaosr</span>
+  </a>
+  <div class="nav-r">
+    <span class="chip">Signals 01</span>
+    <a href="../index.html">← 首页</a>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="toc">
+    <div class="toc-h">Contents</div>
+    <a href="#s1" class="on">01 两个函数的加权平均</a>
+    <a href="#s2">02 翻过来，滑过去</a>
+    <a href="#s3">03 叠加：拆成冲激</a>
+    <a href="#s4">04 连续的情况</a>
+    <a href="#s5">05 图像上的卷积</a>
+    <a href="#s6">06 卷积定理</a>
+    <a href="#s7">07 小结</a>
+  </aside>
+
+  <main>
+    <div class="chap-head">
+      <div class="crumb">SIGNALS&nbsp;&amp;&nbsp;SYSTEMS <span>/</span> CHAPTER 01</div>
+      <h1>卷积：把两个函数<em>叠</em>在一起</h1>
+      <p class="abstract">
+        它是信号与系统里出现频率最高的那个符号，也是 CNN 里那个"卷积层"的同一个词。
+        这一章不背公式，只把 <b>翻转、平移、相乘、相加</b> 这四个动作放到你能拖着看的位置上。
+      </p>
+      <div class="meta-row">
+        <span class="tag">Convolution</span>
+        <span class="tag">Impulse Response</span>
+        <span class="tag">LTI</span>
+      </div>
+      <div class="src">
+        <span class="src-k">参考</span>
+        <span class="src-t">3Blue1Brown · <b>那么……什么是卷积？</b></span>
+        <span class="src-links"><a class="src-a" href="https://www.bilibili.com/video/BV1Vd4y1e7pj/" target="_blank" rel="noopener">B 站 ↗</a></span>
+      </div>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section id="s1">
+      <div class="s-head"><span class="s-idx">01</span><h2>一句话：卷积是一次带权重的平均</h2></div>
+
+      <p>
+        先看离散版本。两个序列 <code>x</code> 和 <code>h</code>，卷积记作 <code>y = x * h</code>：
+      </p>
+
+      <div class="formula">
+        <span class="v">y</span>[<span class="v">n</span>] <span class="op">=</span>
+        <span style="color:var(--indigo)">Σ</span><span class="sub">k</span>
+        <span class="v">x</span>[<span class="v">k</span>] <span class="op">·</span> <span class="v">h</span>[<span class="v">n</span> <span class="op">−</span> <span class="v">k</span>]
+        <span class="note">对每一个输出位置 n，把 x 的一个"翻过来并平移 n"的版本逐点相乘，再全部加起来。</span>
+      </div>
+
+      <p>
+        注意 <code>h[n−k]</code> 里的那个减号 —— 它同时干了<b>翻转</b>和<b>平移</b>两件事。
+        很多人第一次学就卡在这里：为什么不是 <code>h[k−n]</code>，为什么不是直接乘？下一节把它画出来。
+      </p>
+
+      <p>
+        换个说法会更好懂：<b>y[n] 是 x 在 n 附近的一段加权平均，权重由 h 决定</b>。
+        h 长成一个平滑的钟形，卷积就是"模糊"；h 一边正一边负，卷积就是"找边缘"。
+      </p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section id="s2">
+      <div class="s-head"><span class="s-idx">02</span><h2>翻过来，滑过去</h2></div>
+
+      <p>
+        下面三个横条分别是：原始序列 <code>x</code>、翻转并平移后的 <code>h</code>、以及它们的逐点乘积。
+        拖动 n，看第三条的面积怎么变：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>y[n] = Σ x[k]·h[n−k]</span>
+          <span id="cvSum" style="font-family:var(--mono);font-size:12px">y[0] = 0.00</span>
+        </div>
+        <div class="panel-b">
+          <canvas id="cvSlide"></canvas>
+          <div class="cvctl">
+            <span class="k">n</span>
+            <input type="range" id="cvN" min="0" max="9" value="2" />
+            <span class="v" id="cvNv">2</span>
+            <button class="btn sm" id="cvFlip">去掉翻转这一步</button>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        把按钮点下去，就是把 <code>h[n−k]</code> 换成 <code>h[n+k]</code> —— 后者叫<b>相关</b>（correlation），
+        长得几乎一样，但少了那个翻转。深度学习里说的"卷积"其实大多是相关，因为核是学出来的，翻不翻无所谓；
+        信号处理里必须翻，因为 h 有明确的物理含义（系统对冲激的响应）。
+      </p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section id="s3">
+      <div class="s-head"><span class="s-idx">03</span><h2>叠加：把输入拆成一串冲激</h2></div>
+
+      <p>
+        为什么卷积长这样？因为它来自一条更基本的假设：<b>系统是线性的、时不变的</b>（LTI）。
+        线性意味着"输入相加，输出也相加"；时不变意味着"输入晚来一会儿，输出也只是晚来一会儿、形状不变"。
+      </p>
+
+      <p>
+        于是任何输入都可以拆成一串冲激的叠加，而每个冲激的响应都是同一个 <code>h</code> 平移一下、缩放一下。
+        把它们加起来，就是卷积。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Superposition</span>
+          <span id="spState" style="font-size:11px;color:var(--muted)">已叠加 0 个</span>
+        </div>
+        <div class="panel-b">
+          <canvas id="cvImp"></canvas>
+          <div class="cvctl">
+            <button class="btn sm" id="spStep">再叠一个 →</button>
+            <button class="btn sm" id="spReset">重来</button>
+            <span class="k" style="margin-left:auto">每个冲激都唤起一个平移后的 h</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section id="s4">
+      <div class="s-head"><span class="s-idx">04</span><h2>连续的情况：两个方波</h2></div>
+
+      <p>
+        连续卷积只是把求和换成积分，动作一模一样。两个宽度为 2 的方波卷在一起，结果是梯形：
+        重叠面积从 0 开始线性增长，到完全重合时达到最大，再线性减少。
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>y(t) = ∫ x(τ)h(t−τ)dτ</span>
+          <span id="ctV" style="font-family:var(--mono);font-size:12px">y(2.00) = 2.00</span>
+        </div>
+        <div class="panel-b">
+          <canvas id="cvCont"></canvas>
+          <div class="cvctl">
+            <span class="k">t</span>
+            <input type="range" id="ctT" min="0" max="800" value="200" />
+            <span class="v" id="ctTv">2.00</span>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        灰蓝色的重叠区域就是那个积分。它的大小随 t 变化，画出来就是下面的梯形 —— 这就是"卷积"两个字的全部含义。
+      </p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section id="s5">
+      <div class="s-head"><span class="s-idx">05</span><h2>图像上的卷积：3×3 的小窗口</h2></div>
+
+      <p>
+        图像是二维的，卷积核也变成二维。一个 3×3 的核滑过整张图，每个位置做九次乘加 —— 这就是卷积层在做的事。
+        换一个核，输出的意义完全变了：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>2D convolution</span>
+          <div class="ctrl-row">
+            <button class="btn sm on" data-k="edge">边缘</button>
+            <button class="btn sm" data-k="blur">模糊</button>
+            <button class="btn sm" data-k="sharp">锐化</button>
+            <button class="btn sm" data-k="emboss">浮雕</button>
+          </div>
+        </div>
+        <div class="panel-b">
+          <div class="imgwrap">
+            <figure><canvas id="imIn"></canvas><figcaption>输入 28×28</figcaption></figure>
+            <figure><div id="imK" class="k3"></div><figcaption>卷积核 3×3</figcaption></figure>
+            <figure><canvas id="imOut"></canvas><figcaption>输出</figcaption></figure>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        边缘核一边正一边负，平坦区域相乘后抵消，只有灰度突变处才留下大值；
+        模糊核全是正的且和为一，等于对邻域取平均；锐化核是"原图减去模糊"，把边缘的相对强度放大。
+      </p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section id="s6">
+      <div class="s-head"><span class="s-idx">06</span><h2>卷积定理：时域卷，频域乘</h2></div>
+
+      <p>
+        这一条把下一章的傅里叶变换和这一章接上了：
+      </p>
+
+      <div class="formula">
+        <span class="v">F</span>{<span class="v">x</span> <span class="op">*</span> <span class="v">h</span>}
+        <span class="op">=</span>
+        <span class="v">F</span>{<span class="v">x</span>} <span class="op">·</span> <span class="v">F</span>{<span class="v">h</span>}
+        <span class="note">时域里的卷积，等于频域里的逐点相乘。反过来也成立：时域相乘 = 频域卷积。</span>
+      </div>
+
+      <p>
+        这条性质的价值是工程性的：直接做卷积，一个长度 N 的信号要 N² 次乘法；转到频域相乘再转回来，
+        只要 N log N（FFT）。这就是为什么"滤波"在实现里几乎总是先 FFT、乘一个窗、再 IFFT。
+      </p>
+
+      <p>
+        它也给了一个看卷积的新角度：<b>h 的频谱就是它对各个频率的放大倍数</b>。
+        低通核的频谱在低频接近 1、高频接近 0，所以卷积之后就变模糊了 —— 一句话讲完了滤波器的全部设计。
+      </p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section id="s7">
+      <div class="s-head"><span class="s-idx">07</span><h2>小结</h2></div>
+
+      <div class="flow">
+        <div class="flow-step"><div class="flow-n">1</div><div><div class="flow-t">翻转</div><div class="flow-d">h[k] → h[−k]。这一步来自"现在的输出由过去的输入决定"。</div></div></div>
+        <div class="flow-step"><div class="flow-n">2</div><div><div class="flow-t">平移</div><div class="flow-d">h[−k] → h[n−k]。求第 n 个输出，就把 h 滑到 n。</div></div></div>
+        <div class="flow-step"><div class="flow-n">3</div><div><div class="flow-t">相乘再相加</div><div class="flow-d">逐点乘积的总和，就是 y[n]。</div></div></div>
+        <div class="flow-step"><div class="flow-n">4</div><div><div class="flow-t">把它理解成滤波器</div><div class="flow-d">h 决定"保留什么频率"，卷积就是滤波。</div></div></div>
+      </div>
+
+      <div class="cheat">
+        <div class="cheat-row"><span class="cheat-k">离散卷积</span><span class="cheat-v">y[n] = Σ<sub>k</sub> x[k]·h[n−k]</span></div>
+        <div class="cheat-row"><span class="cheat-k">连续卷积</span><span class="cheat-v">y(t) = ∫ x(τ)·h(t−τ) dτ</span></div>
+        <div class="cheat-row"><span class="cheat-k">二维（图像）</span><span class="cheat-v">y[i,j] = Σ<sub>m,n</sub> x[i−m, j−n]·k[m,n]</span></div>
+        <div class="cheat-row"><span class="cheat-k">卷积定理</span><span class="cheat-v">F{x*h} = F{x}·F{h}</span></div>
+        <div class="cheat-row"><span class="cheat-k">与相关的关系</span><span class="cheat-v">相关 = 不翻转的卷积 = x[n+k] 对 h</span></div>
+      </div>
+
+      <div class="foot-nav">
+        <a href="../deep-learning/03-backprop.html">← 上一块：反向传播</a>
+        <a href="02-fourier.html">下一章：傅里叶变换 →</a>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ---- 公共：挂载画布 ---- */
+function mount(cv, W, H, draw){
+  let ctx = null;
+  const dpr = Math.min(window.devicePixelRatio||1, 1.5);
+  function fit(){
+    const p = cv.parentElement;
+    if(!p) return;
+    const cs = getComputedStyle(p);
+    const w = Math.max(240, p.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0));
+    const h = H * w / W;
+    cv.style.width = '100%'; cv.style.height = h + 'px';
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+    ctx = cv.getContext('2d');
+    const k = dpr*w/W;
+    ctx.setTransform(k,0,0,k,0,0);
+    draw(ctx, W, H);
+  }
+  fit();
+  if(window.ResizeObserver) new ResizeObserver(fit).observe(cv.parentElement);
+  window.addEventListener('resize', fit);
+  return {
+    redraw: ()=>{ if(ctx) draw(ctx, W, H); },
+    fit
+  };
+}
+
+/* ===== 02 滑动 ===== */
+(function(){
+  const cv = document.getElementById('cvSlide');
+  if(!cv) return;
+  const X = [0, 1, 3, 4, 3, 1, 0, 0, 0, 0];
+  const Hh = [0.15, 0.5, 1, 0.5, 0.15];
+  const W = 660, HH = 380;
+  let n = 2, flip = true;
+
+  function draw(ctx){
+    ctx.clearRect(0,0,W,HH);
+    const padL = 70, padR = 20;
+    const slots = 10, bw = (W-padL-padR)/slots;
+    const b1 = 140, b2 = 240, b3 = 340;
+    const u1 = 26, u2 = 44;
+    const cx = k => padL + bw*k + bw*0.5;
+
+    ctx.font = '500 10px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#98A2B3';
+
+    // 车道标签
+    ctx.fillText('x[k]', 6, b1 + 4);
+    ctx.fillText(flip ? 'h[n−k]' : 'h[n+k]', 6, b2 + 4);
+    ctx.fillText('乘积', 6, b3 + 4);
+
+    // 可用的 k 区间
+    const k0 = flip ? Math.max(0, n-(Hh.length-1)) : 0;
+    const k1 = flip ? Math.min(slots-1, n) : Math.min(slots-1, 9-n);
+    if(k1 >= k0){
+      ctx.fillStyle = 'rgba(14,159,110,.055)';
+      ctx.fillRect(padL + bw*k0, 28, bw*(k1-k0+1), 324);
+    }
+
+    // 基线
+    [b1,b2,b3].forEach(y=>{
+      ctx.strokeStyle = '#EAECF0';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
+    });
+
+    ctx.textAlign = 'center';
+
+    // x[k]
+    for(let k=0;k<slots;k++){
+      const v = X[k] || 0;
+      if(!v) continue;
+      const x = cx(k);
+      ctx.fillStyle = 'rgba(79,70,229,.16)';
+      ctx.fillRect(x-bw*0.26, b1-v*u1, bw*0.52, v*u1);
+      ctx.strokeStyle = 'rgba(79,70,229,.8)';
+      ctx.strokeRect(x-bw*0.26, b1-v*u1, bw*0.52, v*u1);
+      ctx.fillStyle = '#4338CA';
+      ctx.fillText(v, x, b1-v*u1-6);
+    }
+
+    // h 与乘积
+    const prods = [];
+    let pmax = 0, sum = 0;
+    for(let k=0;k<slots;k++){
+      const idx = flip ? (n-k) : (n+k);
+      const v = (idx>=0 && idx<Hh.length) ? Hh[idx] : 0;
+      const pr = (X[k]||0) * v;
+      prods.push({k, v, pr});
+      pmax = Math.max(pmax, pr);
+      sum += pr;
+    }
+
+    prods.forEach(o=>{
+      const x = cx(o.k);
+      if(o.v){
+        ctx.fillStyle = 'rgba(14,159,110,.16)';
+        ctx.fillRect(x-bw*0.26, b2-o.v*u2, bw*0.52, o.v*u2);
+        ctx.strokeStyle = 'rgba(14,159,110,.8)';
+        ctx.strokeRect(x-bw*0.26, b2-o.v*u2, bw*0.52, o.v*u2);
+        ctx.fillStyle = '#0E7A56';
+        ctx.fillText(o.v.toFixed(2), x, b2-o.v*u2-6);
+      }
+      if(o.pr > 0.001){
+        const hgt = o.pr/(pmax||1)*66;
+        ctx.fillStyle = 'rgba(245,158,11,.24)';
+        ctx.fillRect(x-bw*0.26, b3-hgt, bw*0.52, hgt);
+        ctx.strokeStyle = 'rgba(245,158,11,.9)';
+        ctx.strokeRect(x-bw*0.26, b3-hgt, bw*0.52, hgt);
+        ctx.fillStyle = '#B45309';
+        ctx.fillText(o.pr.toFixed(1), x, b3-hgt-6);
+      }
+    });
+
+    // 索引
+    ctx.fillStyle = '#C4C9D4';
+    for(let k=0;k<slots;k++) ctx.fillText(String(k), cx(k), 362);
+
+    document.getElementById('cvSum').textContent = 'y[' + n + '] = ' + sum.toFixed(2);
+  }
+
+  const inst = mount(cv, W, HH, draw);
+  const sl = document.getElementById('cvN');
+  sl.addEventListener('input', e=>{
+    n = +e.target.value;
+    document.getElementById('cvNv').textContent = n;
+    inst.redraw();
+  });
+  document.getElementById('cvFlip').onclick = function(){
+    flip = !flip;
+    this.textContent = flip ? '去掉翻转这一步' : '恢复翻转';
+    inst.redraw();
+  };
+})();
+
+/* ===== 03 冲激叠加 ===== */
+(function(){
+  const cv = document.getElementById('cvImp');
+  if(!cv) return;
+  const Hh = [0.5, 1, 0.6];
+  const SPIKES = [{k:1, a:1}, {k:3, a:1.4}, {k:5, a:0.7}];
+  const W = 660, HH = 350;
+  let step = 0;
+
+  function draw(ctx){
+    ctx.clearRect(0,0,W,HH);
+    const padL = 70, padR = 18;
+    const slots = 10, bw = (W-padL-padR)/slots;
+    const b1 = 100, b2 = 196, b3 = 330;
+    const cx = k => padL + bw*k + bw*0.5;
+
+    ctx.font = '500 10px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#98A2B3';
+    ctx.fillText('输入 x', 6, b1 + 4);
+    ctx.fillText('冲激响应 h', 6, b2 + 4);
+    ctx.fillText('输出叠加', 6, b3 + 4);
+
+    [b1,b2,b3].forEach(y=>{
+      ctx.strokeStyle = '#EAECF0';
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
+    });
+
+    // 输入冲激
+    SPIKES.forEach(sp=>{
+      const x = cx(sp.k);
+      ctx.strokeStyle = 'rgba(79,70,229,.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, b1); ctx.lineTo(x, b1 - sp.a*38); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, b1 - sp.a*38, 3, 0, 6.2832);
+      ctx.fillStyle = '#4F46E5'; ctx.fill();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#4338CA';
+      ctx.fillText('a=' + sp.a, x, b1 - sp.a*38 - 8);
+      ctx.textAlign = 'left';
+    });
+
+    // h
+    Hh.forEach((v,i)=>{
+      const x = cx(i);
+      ctx.fillStyle = 'rgba(14,159,110,.16)';
+      ctx.fillRect(x-bw*0.2, b2-v*46, bw*0.4, v*46);
+      ctx.strokeStyle = 'rgba(14,159,110,.8)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x-bw*0.2, b2-v*46, bw*0.4, v*46);
+    });
+
+    // 输出
+    const acc = new Array(slots+4).fill(0);
+    for(let s=0;s<step;s++){
+      const sp = SPIKES[s];
+      Hh.forEach((v,i)=>{
+        const idx = sp.k + i;
+        if(idx < acc.length) acc[idx] += v*sp.a;
+      });
+    }
+    let amax = 1e-6;
+    for(let k=0;k<acc.length;k++) amax = Math.max(amax, acc[k]);
+
+    if(step === 0){
+      ctx.fillStyle = '#C4C9D4';
+      ctx.font = '500 11px ui-monospace, Consolas, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('点「再叠一个」，看每个冲激唤起一份平移后的 h', W/2 + 20, b3 - 40);
+      ctx.textAlign = 'left';
+      ctx.font = '500 10px ui-monospace, Consolas, monospace';
+    }
+
+    // 每个副本的虚线轮廓
+    for(let s=0;s<step;s++){
+      const sp = SPIKES[s];
+      ctx.strokeStyle = 'rgba(14,159,110,.45)';
+      ctx.setLineDash([3,3]);
+      ctx.beginPath();
+      Hh.forEach((v,i)=>{
+        const x = cx(sp.k + i);
+        const y = b3 - (v*sp.a)/amax*78;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    for(let k=0;k<acc.length;k++){
+      const v = acc[k];
+      if(v <= 0.002) continue;
+      const x = cx(k);
+      const hgt = v/amax*78;
+      ctx.fillStyle = 'rgba(79,70,229,.72)';
+      ctx.fillRect(x-bw*0.24, b3-hgt, bw*0.48, hgt);
+    }
+
+    document.getElementById('spState').textContent = '已叠加 ' + step + ' 个';
+  }
+
+  const inst = mount(cv, W, HH, draw);
+  document.getElementById('spStep').onclick = ()=>{
+    if(step < SPIKES.length){ step++; inst.redraw(); }
+  };
+  document.getElementById('spReset').onclick = ()=>{ step = 0; inst.redraw(); };
+})();
+
+/* ===== 04 连续两个方波 ===== */
+(function(){
+  const cv = document.getElementById('cvCont');
+  if(!cv) return;
+  const W = 660, HH = 350;
+  let t = 2;
+
+  // x(τ) 在 [0,2] 上为 1；h(t−τ) 在 [t−2, t] 上为 1
+  function overlap(t){
+    const lo = Math.max(0, t-2), hi = Math.min(2, t);
+    return Math.max(0, hi-lo);
+  }
+
+  function draw(ctx){
+    ctx.clearRect(0,0,W,HH);
+    const x0 = 64, x1 = W-26;
+    const sx = v => x0 + (v+0.5)/8.5*(x1-x0);
+    const b1 = 118, u = 54;
+    const b2 = 300, amp = 74;
+
+    ctx.font = '500 10px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#98A2B3';
+
+    // 基线
+    [b1, b2].forEach(y=>{
+      ctx.strokeStyle = '#EAECF0';
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    });
+
+    // x(τ)
+    ctx.fillStyle = 'rgba(79,70,229,.10)';
+    ctx.fillRect(sx(0), b1-u, sx(2)-sx(0), u);
+    ctx.strokeStyle = 'rgba(79,70,229,.92)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sx(0), b1); ctx.lineTo(sx(0), b1-u);
+    ctx.lineTo(sx(2), b1-u); ctx.lineTo(sx(2), b1);
+    ctx.stroke();
+    ctx.fillStyle = '#4338CA';
+    ctx.fillText('x(τ)', sx(0), b1-u-8);
+
+    // h(t−τ)
+    ctx.fillStyle = 'rgba(14,159,110,.10)';
+    ctx.fillRect(sx(t-2), b1-u*0.72, sx(t)-sx(t-2), u*0.72);
+    ctx.strokeStyle = 'rgba(14,159,110,.92)';
+    ctx.beginPath();
+    ctx.moveTo(sx(t-2), b1); ctx.lineTo(sx(t-2), b1-u*0.72);
+    ctx.lineTo(sx(t), b1-u*0.72); ctx.lineTo(sx(t), b1);
+    ctx.stroke();
+    ctx.fillStyle = '#0E7A56';
+    ctx.fillText('h(t−τ)', sx(t)+6, b1-u*0.72-8);
+
+    // 重叠区
+    const lo = Math.max(0, t-2), hi = Math.min(2, t);
+    if(hi > lo){
+      ctx.fillStyle = 'rgba(245,158,11,.26)';
+      ctx.fillRect(sx(lo), b1-u*0.72, sx(hi)-sx(lo), u*0.72);
+    }
+
+    // 轴刻度
+    ctx.fillStyle = '#C4C9D4';
+    ctx.textAlign = 'center';
+    for(let v=0; v<=8; v+=2) ctx.fillText(String(v), sx(v), b1+16);
+    ctx.textAlign = 'left';
+
+    // y(t)
+    ctx.fillStyle = '#98A2B3';
+    ctx.fillText('y(t)', x0-56, b2-amp-6);
+
+    ctx.beginPath();
+    for(let i=0;i<=400;i++){
+      const tt = i/400*8;
+      const y = overlap(tt);
+      const X = sx(tt), Y = b2 - y/2*amp;
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = '#4F46E5'; ctx.lineWidth = 2; ctx.stroke();
+
+    // 标注
+    ctx.fillStyle = 'rgba(79,70,229,.55)';
+    ctx.font = '500 9.5px ui-monospace, Consolas, monospace';
+    ctx.fillText('面积最大', sx(2)+12, b2-amp+2);
+
+    // 当前点
+    const yv = overlap(t);
+    ctx.beginPath();
+    ctx.arc(sx(t), b2 - yv/2*amp, 4.5, 0, 6.2832);
+    ctx.fillStyle = '#4F46E5'; ctx.fill();
+
+    ctx.strokeStyle = 'rgba(79,70,229,.25)';
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(sx(t), b2 - yv/2*amp); ctx.lineTo(sx(t), b1); ctx.stroke();
+    ctx.setLineDash([]);
+
+    document.getElementById('ctV').textContent = 'y(' + t.toFixed(2) + ') = ' + yv.toFixed(2);
+  }
+
+  const inst = mount(cv, W, HH, draw);
+  const sl = document.getElementById('ctT');
+  sl.addEventListener('input', e=>{
+    t = +e.target.value/100;
+    document.getElementById('ctTv').textContent = t.toFixed(2);
+    inst.redraw();
+  });
+})();
+
+/* ===== 05 图像卷积 ===== */
+(function(){
+  const cvIn = document.getElementById('imIn');
+  const cvOut = document.getElementById('imOut');
+  if(!cvIn) return;
+
+  const N = 28, S = 168;
+  const DPR = Math.min(window.devicePixelRatio||1, 1.5);
+  function prep(cv){
+    cv.style.width = S+'px'; cv.style.height = S+'px';
+    cv.width = Math.round(S*DPR); cv.height = Math.round(S*DPR);
+    const g = cv.getContext('2d');
+    g.setTransform(DPR,0,0,DPR,0,0);
+    return g;
+  }
+  const gIn = prep(cvIn), gOut = prep(cvOut);
+
+  const KERNELS = {
+    edge:   { k:[[-1,-1,-1],[-1,8,-1],[-1,-1,-1]], lo:0.5, ctr:true },
+    blur:   { k:[[1/9,1/9,1/9],[1/9,1/9,1/9],[1/9,1/9,1/9]], lo:0 },
+    sharp:  { k:[[0,-1,0],[-1,5,-1],[0,-1,0]], lo:0 },
+    emboss: { k:[[-2,-1,0],[-1,1,1],[0,1,2]], lo:0.5, ctr:true }
+  };
+  let cur = 'edge';
+
+  // 造 28×28 的 3
+  const PIX = (function(){
+    const HW = 320;
+    const c = document.createElement('canvas'); c.width = c.height = HW;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0,0,HW,HW);
+    g.fillStyle = '#fff'; g.textAlign='center'; g.textBaseline='middle';
+    g.font = '700 250px "Segoe UI", Arial, sans-serif';
+    g.fillText('3', HW/2, HW/2+6);
+    const d = g.getImageData(0,0,HW,HW).data;
+    let x0=HW,y0=HW,x1=-1,y1=-1;
+    for(let y=0;y<HW;y++) for(let x=0;x<HW;x++){
+      if(d[(y*HW+x)*4] > 40){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+    }
+    const w=x1-x0+1, h=y1-y0+1, s=Math.max(w,h);
+    const ox=x0-(s-w)/2, oy=y0-(s-h)/2, side=20, pad=(N-side)/2;
+    const out = new Float32Array(N*N);
+    for(let ty=0;ty<side;ty++) for(let tx=0;tx<side;tx++){
+      const sx0=ox+tx/side*s, sy0=oy+ty/side*s;
+      const sx1=ox+(tx+1)/side*s, sy1=oy+(ty+1)/side*s;
+      let sum=0,cnt=0;
+      for(let yy=Math.floor(sy0); yy<Math.ceil(sy1); yy++)
+        for(let xx=Math.floor(sx0); xx<Math.ceil(sx1); xx++){
+          if(xx<0||yy<0||xx>=HW||yy>=HW) continue;
+          sum += d[(yy*HW+xx)*4]/255; cnt++;
+        }
+      out[(ty+pad)*N + (tx+pad)] = cnt ? sum/cnt : 0;
+    }
+    return out;
+  })();
+
+  function drawImage(g, fn){
+    const cell = S/N;
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+      const v = Math.max(0, Math.min(1, fn(x,y)));
+      g.fillStyle = 'rgb(' + Math.round(255-v*225) + ',' + Math.round(255-v*214) + ',' + Math.round(255-v*198) + ')';
+      g.fillRect(x*cell, y*cell, cell, cell);
+    }
+  }
+
+  function conv(x, y, ker){
+    let s = 0;
+    for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+      const xx = x+dx, yy = y+dy;
+      if(xx<0||yy<0||xx>=N||yy>=N) continue;
+      s += PIX[yy*N+xx] * ker[dy+1][dx+1];
+    }
+    return s;
+  }
+
+  function renderKernel(){
+    const box = document.getElementById('imK');
+    const k = KERNELS[cur].k;
+    box.innerHTML = '';
+    k.forEach(row=>row.forEach(v=>{
+      const sp = document.createElement('span');
+      sp.textContent = Math.abs(v) < 0.005 ? '0' : (Math.abs(v) < 0.11 ? v.toFixed(2) : v.toFixed(1));
+      if(v > 0.005) sp.className = 'pos';
+      if(v < -0.005) sp.className = 'neg';
+      box.appendChild(sp);
+    }));
+  }
+
+  function render(){
+    drawImage(gIn, (x,y)=>PIX[y*N+x]);
+    const ker = KERNELS[cur].k, lo = KERNELS[cur].lo, ctr = KERNELS[cur].ctr;
+    drawImage(gOut, (x,y)=>{
+      const s = conv(x,y,ker);
+      return ctr ? (lo - s*0.45) : (s + lo) * 0.92;
+    });
+    renderKernel();
+  }
+
+  document.querySelectorAll('[data-k]').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('[data-k]').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      cur = btn.dataset.k;
+      render();
+    };
+  });
+
+  render();
+})();
+
+/* ===== 进度 / 目录 / 进场 ===== */
+(function(){
+  const bar = document.getElementById('progress');
+  const links = [].slice.call(document.querySelectorAll('.toc a'));
+  const secs = links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const els = [].slice.call(document.querySelectorAll('section, .panel'));
+  els.forEach(el=>el.classList.add('rise'));
+  const root = document.documentElement;
+  let tops = [], pending = true, queued = false, lastCur = -1;
+
+  function measure(){
+    const y = window.pageYOffset;
+    tops = secs.map(s=>s.getBoundingClientRect().top + y);
+    pending = els.some(el=>!el.classList.contains('in'));
+    queued = false; tick();
+  }
+  function tick(){
+    queued = false;
+    const y = window.pageYOffset, vh = window.innerHeight || 800;
+    let show = null;
+    if(pending){
+      show = [];
+      for(const el of els){
+        if(el.classList.contains('in')) continue;
+        const r = el.getBoundingClientRect();
+        if(r.top < vh-20 && r.bottom > -20) show.push(el);
+      }
+    }
+    if(bar){
+      const max = root.scrollHeight - vh;
+      bar.style.transform = 'scaleX(' + (max>0 ? Math.min(1,y/max) : 0).toFixed(4) + ')';
+    }
+    let cur = 0;
+    for(let i=0;i<tops.length;i++) if(tops[i]-140 <= y) cur = i;
+    if(cur !== lastCur){
+      lastCur = cur;
+      for(let i=0;i<links.length;i++) links[i].classList.toggle('on', i===cur);
+    }
+    if(show){
+      for(const el of show) el.classList.add('in');
+      if(show.length) pending = els.some(el=>!el.classList.contains('in'));
+    }
+  }
+  window.addEventListener('scroll', ()=>{ if(!queued){ queued = true; requestAnimationFrame(tick); } }, {passive:true});
+  window.addEventListener('resize', measure, {passive:true});
+  window.addEventListener('load', measure);
+  measure(); setTimeout(measure, 150); setTimeout(measure, 800);
+})();
+</script>
+
+</body>
+</html>

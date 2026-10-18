@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="傅里叶变换：用绕圈的方式理解频率分解，从方波谐波叠加到低通滤波。" />
+<title>02 · 傅里叶变换 · Apiginchaosr</title>
+<style>
+
+  :root{
+    --bg:#F4F5F8;
+    --card:#FFFFFF;
+    --ink:#0C111D;
+    --body:#475467;
+    --muted:#98A2B3;
+    --line:#EAECF0;
+    --line-strong:#D0D5DD;
+    --indigo:#4F46E5;
+    --indigo-2:#4338CA;
+    --indigo-soft:#EEF0FF;
+    --cyan:#4F46E5;
+    --violet:#7C3AED;
+    --pink:#E05252;
+    --amber:#B54708;
+    --green:#0E9F6E;
+    --radius:18px;
+    --shadow-sm:0 1px 2px rgba(16,24,40,.04);
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 14px 34px -16px rgba(16,24,40,.14);
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Inter,sans-serif;
+    --mono:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;
+    --math:"Cambria Math","Latin Modern Math",Cambria,Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.78;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(820px 460px at 8% -10%, rgba(79,70,229,.10), transparent 62%),
+      radial-gradient(700px 400px at 94% 0%, rgba(14,159,110,.08), transparent 60%);
+  }
+  /* 顶部阅读进度 */
+  #progress{
+    position:fixed;top:0;left:0;height:2px;width:100%;z-index:99;
+    background:linear-gradient(90deg,#4F46E5,#7C3AED);
+    transform:scaleX(0);transform-origin:0 50%;
+    will-change:transform;
+  }
+  /* 导航 */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 clamp(18px,4vw,56px);height:62px;
+    background:rgba(244,245,248,.82);backdrop-filter:blur(14px) saturate(160%);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:650;font-size:14.5px;letter-spacing:-.02em}
+  .logo-mark{
+    width:27px;height:27px;border-radius:8px;display:grid;place-items:center;flex:none;
+    background:linear-gradient(145deg,#6366F1,#4338CA);
+    box-shadow:0 3px 10px -2px rgba(79,70,229,.45);
+  }
+  .logo-mark::before{content:"◈";color:#fff;font-size:12px;line-height:1}
+  .logo-txt{font-family:var(--sans);font-size:14.5px;letter-spacing:-.02em}
+  .nav-r{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--body)}
+  .nav-r a{color:var(--body);text-decoration:none;transition:color .25s;display:inline-flex;align-items:center;gap:6px}
+  .nav-r a:hover{color:var(--indigo)}
+  .chip{
+    border:1px solid var(--line);background:#fff;border-radius:100px;
+    padding:5px 12px;font-size:10.5px;letter-spacing:.08em;color:var(--muted);
+    text-transform:uppercase;box-shadow:var(--shadow-sm);
+  }
+
+  /* 布局：侧栏 + 正文 */
+  .shell{
+    display:grid;grid-template-columns:200px minmax(0,1fr);
+    gap:clamp(24px,4vw,64px);
+    max-width:1200px;margin:0 auto;padding:0 clamp(18px,4vw,56px);
+    align-items:start;
+  }
+  .toc{position:sticky;top:88px;padding:30px 0 40px;font-size:12px}
+  .toc-h{color:var(--muted);letter-spacing:.18em;font-size:9.5px;text-transform:uppercase;margin-bottom:12px}
+  .toc a{
+    display:block;color:var(--body);text-decoration:none;
+    padding:8px 0 8px 12px;border-left:2px solid var(--line);
+    transition:all .25s;line-height:1.5;
+  }
+  .toc a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+  .toc a.on{color:var(--indigo);border-left-color:var(--indigo);font-weight:550}
+  @media (max-width: 900px){
+    .shell{display:block;max-width:none}
+    .toc{display:none}
+  }
+
+  main{padding-bottom:40px;min-width:0}
+
+  /* 章节头 */
+  .chap-head{padding:clamp(36px,6vw,64px) 0 clamp(24px,4vw,36px)}
+  .crumb{font-size:10.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:20px}
+  .crumb span{color:var(--indigo)}
+  h1{font-size:clamp(30px,4.6vw,46px);line-height:1.18;letter-spacing:-.03em;font-weight:650;margin-bottom:18px}
+  h1 em{
+    font-style:normal;
+    background:linear-gradient(100deg,#4F46E5,#7C3AED 70%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .abstract{color:var(--body);font-size:clamp(14px,1.6vw,15.5px);max-width:60ch}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .tag{
+    font-size:10.5px;padding:4px 10px;border-radius:100px;
+    background:var(--indigo-soft);color:var(--indigo-2);font-weight:500;
+  }
+  /* 参考来源 */
+  .src{
+    display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-top:18px;padding:8px 16px 8px 8px;border-radius:100px;
+    border:1px solid var(--line);background:#fff;text-decoration:none;
+    font-size:12.5px;line-height:1.4;color:var(--body);
+    transition:border-color .2s,box-shadow .2s,background .2s;
+  }
+  .src:hover{border-color:#C7CDFB;background:#FDFDFF;box-shadow:0 6px 16px -8px rgba(79,70,229,.4)}
+  .src .src-a:hover{text-decoration:underline;text-underline-offset:2px}
+  .src .src-k{
+    font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);
+    background:var(--indigo-soft);padding:3px 8px;border-radius:100px;font-weight:600;
+  }
+  .src .src-t b{color:var(--ink);font-weight:600}
+  .src .src-a{color:var(--indigo);font-weight:500;white-space:nowrap;text-decoration:none}
+  .src .src-a + .src-a{padding-left:10px;border-left:1px solid var(--line);line-height:1.1}
+  .src .src-links{display:inline-flex;align-items:center;gap:0;white-space:nowrap}
+
+
+  /* 第一层滤波器 */
+  .fl-wrap{
+    display:grid;grid-template-columns:auto auto auto;
+    gap:clamp(12px,2.4vw,26px);justify-content:center;align-items:center;
+  }
+  .fl-col{display:grid;gap:8px;justify-items:center}
+  .fl-col canvas{display:block;border-radius:8px;box-shadow:0 0 0 1px var(--line)}
+  .fl-cap{font-size:10.5px;color:var(--muted)}
+  .fl-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+  .fl-tab{
+    width:46px;height:46px;padding:0;border:1px solid var(--line);border-radius:10px;
+    background:#fff;cursor:pointer;display:grid;place-items:center;transition:.18s;
+  }
+  .fl-tab canvas{display:block;border-radius:5px}
+  .fl-tab.on{border-color:var(--indigo);box-shadow:0 0 0 2px var(--indigo-soft)}
+  .fl-tab:hover{border-color:#C7CDFB}
+  @media (max-width:760px){
+    .fl-wrap{grid-template-columns:auto auto}
+    .fl-wrap .fl-col:last-child{grid-column:1/-1}
+  }
+
+  /* 章节 */
+  section{scroll-margin-top:84px;padding:clamp(34px,5vw,52px) 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  .s-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
+  .s-idx{
+    font-family:var(--mono);font-size:11px;color:var(--indigo);
+    background:var(--indigo-soft);border-radius:6px;padding:2px 8px;flex:none;font-weight:600;
+  }
+  h2{font-size:clamp(20px,2.5vw,25px);font-weight:650;letter-spacing:-.025em;line-height:1.4}
+  h3{font-size:15px;font-weight:650;margin:26px 0 10px;color:var(--ink);letter-spacing:-.01em}
+  p{color:var(--body);font-size:14.8px;margin:12px 0;max-width:68ch;line-height:1.85}
+  p b,li b{color:var(--ink);font-weight:600}
+  p .hl{color:var(--indigo);font-weight:500}
+  ul,ol{margin:12px 0 12px 2px;padding-left:20px;max-width:68ch}
+  li{color:var(--body);font-size:14.5px;margin:7px 0;line-height:1.8}
+  code{
+    font-family:var(--mono);font-size:12.8px;background:#F2F4F7;
+    border:1px solid var(--line);padding:1.5px 6px;border-radius:5px;color:#344054;
+  }
+  strong.warn{color:var(--amber);font-weight:600}
+
+  /* 公式 */
+  .formula{
+    font-family:var(--math);font-size:clamp(17px,2vw,20px);letter-spacing:.01em;
+    color:var(--ink);padding:18px 22px;margin:18px 0;
+    border-left:3px solid var(--indigo);border-radius:0 12px 12px 0;
+    background:#F7F8FC;
+    overflow-x:auto;line-height:2.1;
+  }
+  .formula .v{font-style:italic;font-family:var(--math)}
+  .formula .sub{font-size:.72em;vertical-align:-.28em;font-style:italic}
+  .formula .sup{font-size:.72em;vertical-align:.42em}
+  .formula .op{color:var(--muted);padding:0 .3em;font-style:normal}
+  .formula .note{display:block;font-family:var(--sans);font-size:11.5px;color:var(--muted);letter-spacing:.02em;margin-top:6px;font-style:normal;line-height:1.7}
+
+  /* 卡片 */
+  .panel{
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    background:var(--card);box-shadow:var(--shadow);
+    margin:24px 0;position:relative;
+  }
+  .panel-h{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:13px 18px;border-bottom:1px solid var(--line);
+    font-size:11px;letter-spacing:.06em;color:var(--muted);
+  }
+  .panel-h .dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--indigo);margin-right:8px;vertical-align:1px;
+  }
+  .panel-b{padding:clamp(16px,2.4vw,24px)}
+
+  /* 提示块 */
+  .aside{
+    border:1px solid #FEDF89;border-radius:12px;padding:14px 18px;margin:20px 0;
+    background:#FFFAEB;font-size:13.6px;color:#7A4E1E;line-height:1.75;max-width:70ch;
+  }
+  .aside b{color:#B54708}
+  .aside .lbl{font-size:10px;letter-spacing:.14em;color:#B54708;display:block;margin-bottom:5px;text-transform:uppercase;font-weight:600}
+
+  /* 控件 */
+  .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{
+    font-size:12px;font-weight:500;
+    padding:8px 14px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--line-strong);background:#fff;color:var(--body);
+    transition:all .2s;line-height:1.2;
+  }
+  .btn:hover{border-color:#B4BAC6;color:var(--ink);background:#FCFCFD}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600;box-shadow:0 2px 8px -2px rgba(79,70,229,.5)}
+  .btn.primary:hover{background:var(--indigo-2);color:#fff}
+  .btn.on{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+  .btn.sm{padding:5px 10px;font-size:11px}
+  .num-btns{display:flex;gap:5px;flex-wrap:wrap}
+  .num-btns .btn{width:32px;padding:6px 0;text-align:center;font-size:11.5px}
+
+  /* 数字网格 */
+  .grid-wrap{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(16px,3vw,34px);align-items:start}
+  @media (max-width: 700px){.grid-wrap{grid-template-columns:minmax(0,1fr)}}
+  #gridcv{
+    display:block;border-radius:12px;cursor:crosshair;
+    border:1px solid var(--line);box-shadow:0 8px 24px -12px rgba(16,24,40,.18);
+  }
+  .readout{display:grid;gap:8px;font-size:11.5px;color:var(--muted);align-content:start;padding-top:2px}
+  .readout .kv{display:flex;gap:10px;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:6px}
+  .readout .kv b{color:var(--ink);font-weight:600}
+
+  /* 柱状图 */
+  .bars{display:flex;align-items:flex-end;gap:clamp(4px,1vw,10px);padding-top:8px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+  .bar-track{
+    width:100%;height:118px;display:flex;align-items:flex-end;
+    background:#F2F4F7;border-radius:6px;overflow:hidden;
+  }
+  .bar-fill{
+    width:100%;background:linear-gradient(180deg,#818CF8,#4F46E5);
+    border-radius:6px 6px 0 0;transition:height .5s cubic-bezier(.16,1,.3,1);
+    height:0;
+  }
+  .bar-fill.win{background:linear-gradient(180deg,#4F46E5,#3730A3);box-shadow:0 0 12px rgba(79,70,229,.35)}
+  .bar-lbl{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  .bar-val{font-family:var(--mono);font-size:9.5px;color:var(--muted);height:12px}
+
+  /* 神经元 demo */
+  .neu-demo{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:clamp(16px,3vw,30px);align-items:center}
+  @media (max-width: 720px){.neu-demo{grid-template-columns:minmax(0,1fr)}}
+  .neu-rows{display:grid;gap:10px}
+  #smBars{justify-content:flex-start;gap:20px;margin-top:26px !important}
+  #smBars .bar-col{flex:0 0 88px}
+  #smBars .bar-track{height:112px}
+  .neu-row{display:grid;grid-template-columns:max-content 1fr 84px;gap:14px;align-items:center}
+  .neu-x{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+    background:#E4E7EC;outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;border:2px solid #fff;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    border:2px solid #fff;box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;
+  }
+  .neu-w{font-family:var(--mono);font-size:11px;color:var(--indigo);text-align:right}
+  .neu-out{
+    border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;
+    background:#FCFCFD;
+  }
+  .neu-out .big{font-family:var(--mono);font-size:26px;color:var(--indigo);line-height:1.3}
+  .neu-out .lbl{font-size:9.5px;letter-spacing:.05em;color:var(--muted)}
+
+  /* 网络 canvas 面板 */
+  .net-stage{position:relative;background:#FCFCFD}
+  #netcv{display:block;width:100%;height:auto}
+  .net-status{
+    display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);letter-spacing:.02em;min-height:40px;
+  }
+  .net-status .ph{color:var(--indigo);font-weight:600}
+  .net-summary{
+    display:flex;flex-wrap:wrap;gap:22px;padding:14px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .net-summary b{color:var(--ink);font-weight:600}
+  .net-summary .win b{color:var(--indigo)}
+
+  /* 曲线 */
+  .curve-box{position:relative}
+  svg.curve{width:100%;height:auto;display:block;overflow:visible}
+  .curve-lbl{font-family:var(--mono);font-size:9.5px;fill:var(--muted);letter-spacing:.04em}
+
+  /* 流程回顾 */
+  .flow{display:grid;gap:0;margin:22px 0}
+  .flow-step{display:grid;grid-template-columns:26px minmax(0,1fr);gap:16px;padding:14px 0;position:relative}
+  .flow-step:not(:last-child)::before{
+    content:"";position:absolute;left:12.5px;top:38px;bottom:-4px;width:1px;
+    background:linear-gradient(180deg,#C7D2FE,#EEF0FF);
+  }
+  .flow-n{
+    width:26px;height:26px;border-radius:50%;border:1px solid #C7D2FE;
+    display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--indigo);
+    background:#fff;z-index:1;font-weight:600;
+  }
+  .flow-t{font-size:14px;font-weight:650;margin-bottom:3px}
+  .flow-d{font-size:13px;color:var(--body);line-height:1.7}
+  .flow-d code{font-size:12px}
+
+  /* 公式速查 */
+  .cheat{display:grid;gap:10px}
+  .cheat-row{
+    display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;align-items:center;
+    padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;
+  }
+  .cheat-k{font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+  .cheat-v{font-family:var(--math);font-size:15.5px;color:var(--ink);overflow-x:auto;white-space:nowrap}
+  @media (max-width: 640px){
+    .cheat-row{grid-template-columns:minmax(0,1fr);gap:6px}
+    .cheat-v{white-space:normal}
+  }
+
+  .foot-nav{
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    border-top:1px solid var(--line);padding:30px 0 60px;margin-top:20px;
+  }
+  .foot-nav a{
+    font-size:12.5px;color:var(--body);text-decoration:none;
+    border:1px solid var(--line);border-radius:8px;padding:10px 16px;transition:all .25s;background:#fff;
+  }
+  .foot-nav a:hover{color:var(--indigo);border-color:#C7D2FE}
+  .foot-nav a.dim{opacity:.45;pointer-events:none}
+
+  .rise{transform:translateY(14px);transition:transform .55s cubic-bezier(.16,1,.3,1)}
+  .rise.in{transform:none}
+
+  @media (max-width: 620px){
+    .panel-h{flex-direction:column;align-items:flex-start;gap:10px}
+    .num-btns{width:100%}
+    .num-btns .btn{flex:1 1 0;width:auto;padding:6px 0}
+    .nav-r .chip{display:none}
+    h1{font-size:clamp(26px,7vw,32px)}
+    p,li{font-size:14px}
+    .net-summary{gap:14px}
+    #smBars .bar-col{flex:1 1 0;min-width:0}
+  }
+
+
+  /* ---- 第 02 章新增组件 ---- */
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+  .metrics{
+    display:flex;gap:18px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .metrics b{color:var(--ink);font-weight:600;font-family:var(--mono)}
+  .presets{display:flex;gap:6px;flex-wrap:wrap}
+  .tip-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+  .tip{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fff}
+  .tip h4{font-size:13px;font-weight:650;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .tip h4 span{
+    font-size:9.5px;color:var(--indigo);background:var(--indigo-soft);
+    padding:2px 8px;border-radius:100px;font-weight:600;flex:none;
+  }
+  .tip h4 .t-bad{color:#B54708;background:#FEF0C7}
+  .tip h4 .t-good{color:#027A48;background:#ECFDF3}
+  .tip p{font-size:12.5px;color:var(--body);line-height:1.7;margin:0;max-width:none}
+  canvas{display:block}
+  @media (max-width:640px){.tip-grid{grid-template-columns:1fr}}
+
+
+  .cvctl{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px}
+  .cvctl .k{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .cvctl input[type=range]{flex:1 1 220px;max-width:340px}
+  .cvctl .v{font-family:var(--mono);font-size:11.5px;color:var(--ink);min-width:56px;text-align:right}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<header class="nav">
+  <a class="logo" href="../index.html">
+    <span class="logo-mark"></span>
+    <span class="logo-txt">Apiginchaosr</span>
+  </a>
+  <div class="nav-r">
+    <span class="chip">Signals 02</span>
+    <a href="../index.html">← 首页</a>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="toc">
+    <div class="toc-h">Contents</div>
+    <a href="#f1" class="on">01 它在问什么</a>
+    <a href="#f2">02 绕圈：把信号缠起来</a>
+    <a href="#f3">03 方波：无穷多个正弦</a>
+    <a href="#f4">04 低通：把高频掐掉</a>
+    <a href="#f5">05 采样与混叠</a>
+    <a href="#f6">06 它出现在哪</a>
+    <a href="#f7">07 小结</a>
+  </aside>
+
+  <main>
+    <div class="chap-head">
+      <div class="crumb">SIGNALS&nbsp;&amp;&nbsp;SYSTEMS <span>/</span> CHAPTER 02</div>
+      <h1>傅里叶：把信号<em>拆成圆</em></h1>
+      <p class="abstract">
+        上一章说"卷积在频域是乘法"，那频域到底是什么？这一章用一台<b>绕圈机</b>回答：
+        把信号按某个频率缠到圆上，如果缠得对，它就会偏向一边 —— 偏多少，就是这个频率的含量。
+      </p>
+      <div class="meta-row">
+        <span class="tag">Fourier</span>
+        <span class="tag">Spectrum</span>
+        <span class="tag">Filter</span>
+      </div>
+      <div class="src">
+        <span class="src-k">参考</span>
+        <span class="src-t">3Blue1Brown · <b>形象展示傅里叶变换</b></span>
+        <span class="src-links"><a class="src-a" href="https://www.bilibili.com/video/BV1pW411J7s8/" target="_blank" rel="noopener">B 站 ↗</a><a class="src-a" href="https://www.3blue1brown.com/lessons/fourier-transforms" target="_blank" rel="noopener">原片 ↗</a></span>
+      </div>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section id="f1">
+      <div class="s-head"><span class="s-idx">01</span><h2>它到底在问什么</h2></div>
+
+      <p>
+        傅里叶变换问的是一个非常朴素的问题：<b>这段信号里，某个频率占了多少？</b>
+        它把"随时间变化的波形"换成"每个频率的份量"，也就是<b>频谱</b>。
+      </p>
+
+      <div class="formula">
+        <span class="v">X</span>(<span class="v">f</span>) <span class="op">=</span>
+        <span style="color:var(--indigo)">∫</span>
+        <span class="v">x</span>(<span class="v">t</span>)
+        <span class="v">e</span><span class="sup">−j2πft</span>
+        <span class="v">d</span><span class="v">t</span>
+        <span class="note">e<sup>−j2πft</sup> 是"以频率 f 匀速旋转"这件事的复数写法。乘上它再积分，就是"沿着这个转速把信号累加一圈"。</span>
+      </div>
+
+      <p>
+        式子看着吓人，其实只做了一件事：<b>拿一个转速去试，看信号跟它合不合拍</b>。
+        合拍的部分会一直朝同一个方向累加，不合拍的部分转着转着就互相抵消了。下一节把它画出来。
+      </p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section id="f2">
+      <div class="s-head"><span class="s-idx">02</span><h2>绕圈：把信号缠到圆上</h2></div>
+
+      <p>
+        上面是信号本身，中间是"按频率 f 缠到圆上"的结果，下面是扫过所有 f 得到的频谱。
+        拖动 f，看重心什么时候被甩出去：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Winding machine</span>
+          <span id="fwV" style="font-family:var(--mono);font-size:12px">f = 2.0 Hz</span>
+        </div>
+        <div class="panel-b">
+          <canvas id="cvWind"></canvas>
+          <div class="cvctl">
+            <span class="k">f</span>
+            <input type="range" id="fwF" min="0" max="800" value="200" />
+            <span class="v" id="fwFv">2.00 Hz</span>
+          </div>
+          <div class="legend" style="margin-top:10px">
+            <span><i style="background:#4F46E5"></i>缠绕曲线</span>
+            <span><i style="background:#F59E0B"></i>重心（= 这个频率的份量）</span>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        信号里我放了两个成分：2 Hz 和 5 Hz。当 f 接近 2 或 5 时，曲线几乎全部挤在同一侧，
+        重心被拉得很长；其它频率下它绕成一团，重心回到原点附近。下面那排柱子就是重心长度随 f 的变化。
+      </p>
+
+      <p>
+        这也是理解"相位"的地方：<b>重心不只有长度，还有方向</b>。长度是幅值，角度是相位 ——
+        频谱从来不是一条实数曲线，而是一组复数。
+      </p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section id="f3">
+      <div class="s-head"><span class="s-idx">03</span><h2>方波：无穷多个正弦加起来</h2></div>
+
+      <p>
+        方波在时域里全是直角，在频域里却是一串<b>奇次谐波</b>，幅度按 1/n 衰减。
+        拖动谐波个数，看它一点点逼近直角 —— 顺便注意那些永远消不掉的过冲（吉布斯现象）：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Square wave · Fourier series</span>
+          <span id="sqV" style="font-family:var(--mono);font-size:12px">1 项</span>
+        </div>
+        <div class="panel-b">
+          <canvas id="cvSq"></canvas>
+          <div class="cvctl">
+            <span class="k">谐波</span>
+            <input type="range" id="sqN" min="1" max="24" value="1" />
+            <span class="v" id="sqNv">1</span>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        这就是"频域"的实际用途：你不需要跟一条复杂的波形搏斗，只需要知道<b>哪几个频率、各多少</b>。
+        滤波、压缩、传输，全都建立在这份清单上。
+      </p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section id="f4">
+      <div class="s-head"><span class="s-idx">04</span><h2>低通：把高频掐掉</h2></div>
+
+      <p>
+        既然信号是一串频率的叠加，那么"滤波"就是按频率<b>乘一个系数</b>：留着的乘 1，砍掉的乘 0。
+        拖动截止频率看看：
+      </p>
+
+      <div class="panel">
+        <div class="panel-h">
+          <span><span class="dot"></span>Low-pass</span>
+          <span id="lpV" style="font-family:var(--mono);font-size:12px">截止 6 Hz</span>
+        </div>
+        <div class="panel-b">
+          <canvas id="cvLp"></canvas>
+          <div class="cvctl">
+            <span class="k">截止</span>
+            <input type="range" id="lpC" min="1" max="20" value="6" />
+            <span class="v" id="lpCv">6 Hz</span>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        截止频率越低，边角越圆 —— 因为让方波"方"起来的正是那些高频分量。
+        反过来做高通，留下的就是跳变处的尖峰。图像上的锐化、音频里的"齿音"，都是同一件事。
+      </p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section id="f5">
+      <div class="s-head"><span class="s-idx">05</span><h2>采样与混叠：为什么会"转反"</h2></div>
+
+      <p>
+        既然信号可以拆成频率，那么"采样"就有了一个硬性条件：<b>采样率必须大于最高频率的两倍</b>。
+        否则高频会伪装成低频，这叫混叠（aliasing）。
+      </p>
+
+      <p>
+        直观理解：一个转得太快的轮子，在频闪灯下看起来会倒着转。采样就是那盏频闪灯 ——
+        当轮子每帧转过的角度超过半圈，你就分不清它是正转还是反转了。
+      </p>
+
+      <div class="aside">
+        <b>工程上的两个数字：</b>电话语音采样 8 kHz（刚好覆盖 4 kHz 以内的人声），
+        CD 音频采样 44.1 kHz（覆盖 22.05 kHz，略高于人耳上限 20 kHz）。
+        采样之前必须先过一个<b>抗混叠低通</b>，把超出的成分掐掉 —— 否则它们会折叠回来，污染整个频谱。
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section id="f6">
+      <div class="s-head"><span class="s-idx">06</span><h2>它出现在哪</h2></div>
+
+      <div class="tip-grid">
+        <div class="tip">
+          <h4><span class="t-good">音频</span>均衡器就是一组滤波器</h4>
+          <p>低音、中音、高音三个旋钮，本质是在频谱上拧三个增益。降噪耳机同理：估计出环境噪声的频谱，然后逐点相减。</p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-good">图像</span>JPEG 也在做同一件事</h4>
+          <p>把 8×8 小块变到频域（DCT），人眼不敏感的高频直接量化成 0 —— 这就是为什么 JPEG 压缩率可以很高而看着还行。</p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-good">通信</span>OFDM 与 5G</h4>
+          <p>把高速数据拆到几百个正交的子载波上并行传输，靠的正是 IFFT/FFT。Wi-Fi、4G/5G、DVB 都用这套。</p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-good">计算</span>FFT 是二十世纪最重要的算法之一</h4>
+          <p>把 N² 的离散傅里叶计算降到 N log N。卷积、相关、大数乘法、偏微分方程求解，都靠它加速。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section id="f7">
+      <div class="s-head"><span class="s-idx">07</span><h2>小结</h2></div>
+
+      <div class="flow">
+        <div class="flow-step"><div class="flow-n">1</div><div><div class="flow-t">换一个坐标轴</div><div class="flow-d">时域看"什么时候发生了什么"，频域看"里面有哪些频率"。</div></div></div>
+        <div class="flow-step"><div class="flow-n">2</div><div><div class="flow-t">绕圈找重心</div><div class="flow-d">按频率 f 缠绕信号：合拍的累加，不合拍的抵消。</div></div></div>
+        <div class="flow-step"><div class="flow-n">3</div><div><div class="flow-t">复数：长度 + 方向</div><div class="flow-d">幅值告诉你多少，相位告诉你它在哪儿起步。</div></div></div>
+        <div class="flow-step"><div class="flow-n">4</div><div><div class="flow-t">滤波 = 在频谱上乘系数</div><div class="flow-d">低通留低频，高通留高频，卷积定理让这一切变成乘法。</div></div></div>
+      </div>
+
+      <div class="cheat">
+        <div class="cheat-row"><span class="cheat-k">连续傅里叶变换</span><span class="cheat-v">X(f) = ∫ x(t)·e<sup>−j2πft</sup> dt</span></div>
+        <div class="cheat-row"><span class="cheat-k">逆变换</span><span class="cheat-v">x(t) = ∫ X(f)·e<sup>j2πft</sup> df</span></div>
+        <div class="cheat-row"><span class="cheat-k">卷积定理</span><span class="cheat-v">F{x*h} = F{x}·F{h}</span></div>
+        <div class="cheat-row"><span class="cheat-k">采样定理</span><span class="cheat-v">f<sub>s</sub> &gt; 2·f<sub>max</sub></span></div>
+        <div class="cheat-row"><span class="cheat-k">方波谐波</span><span class="cheat-v">4/π · Σ (1/n)·sin(2πnft)，n 为奇数</span></div>
+      </div>
+
+      <div class="foot-nav">
+        <a href="01-convolution.html">← 上一章：卷积</a>
+        <a href="../index.html">回到首页 →</a>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+function mount(cv, W, H, draw){
+  let ctx = null;
+  const dpr = Math.min(window.devicePixelRatio||1, 1.5);
+  function fit(){
+    const p = cv.parentElement;
+    if(!p) return;
+    const cs = getComputedStyle(p);
+    const w = Math.max(240, p.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0));
+    const h = H * w / W;
+    cv.style.width = '100%'; cv.style.height = h + 'px';
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+    ctx = cv.getContext('2d');
+    const k = dpr*w/W;
+    ctx.setTransform(k,0,0,k,0,0);
+    draw(ctx, W, H);
+  }
+  fit();
+  if(window.ResizeObserver) new ResizeObserver(fit).observe(cv.parentElement);
+  window.addEventListener('resize', fit);
+  return { redraw: ()=>{ if(ctx) draw(ctx, W, H); } };
+}
+
+/* ===== 02 绕圈 ===== */
+(function(){
+  const cv = document.getElementById('cvWind');
+  if(!cv) return;
+  const W = 660, H = 440;
+  const NS = 720;
+  const F1 = 2, F2 = 5;
+
+  function sig(t){ return Math.sin(2*Math.PI*F1*t) + 0.55*Math.sin(2*Math.PI*F2*t); }
+
+  function spectrum(f){
+    let re = 0, im = 0;
+    for(let i=0;i<NS;i++){
+      const t = i/NS;
+      const th = -2*Math.PI*f*t;
+      const x = sig(t);
+      re += x*Math.cos(th);
+      im += x*Math.sin(th);
+    }
+    return Math.hypot(re, im)/NS;
+  }
+
+  let f = 2;
+
+  function draw(ctx){
+    ctx.clearRect(0,0,W,H);
+
+    /* --- A：波形 --- */
+    const ax0 = 40, ax1 = W-30, awY = 58, amp = 30;
+    ctx.strokeStyle = '#F0F2F5';
+    ctx.beginPath(); ctx.moveTo(ax0, awY); ctx.lineTo(ax1, awY); ctx.stroke();
+
+    ctx.beginPath();
+    for(let i=0;i<=400;i++){
+      const t = i/400;
+      const X = ax0 + t*(ax1-ax0);
+      const Y = awY - sig(t)*amp;
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = 'rgba(79,70,229,.85)';
+    ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.fillStyle = '#98A2B3';
+    ctx.font = '500 10px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('x(t)', ax0, awY-amp-8);
+
+    /* --- B：绕圈 --- */
+    const cx = 330, cy = 236, R = 78;
+    ctx.strokeStyle = '#EAECF0';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.2832); ctx.stroke();
+
+    // 十字
+    ctx.strokeStyle = 'rgba(234,236,240,.8)';
+    ctx.beginPath(); ctx.moveTo(cx-R, cy); ctx.lineTo(cx+R, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy-R); ctx.lineTo(cx, cy+R); ctx.stroke();
+
+    // 缠绕曲线：x(t)·e^{-j2πft}
+    ctx.beginPath();
+    for(let i=0;i<=NS;i++){
+      const t = i/NS;
+      const th = -2*Math.PI*f*t;
+      const r = sig(t)*R/1.55;
+      const X = cx + Math.cos(th)*r, Y = cy + Math.sin(th)*r;
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = 'rgba(79,70,229,.38)';
+    ctx.lineWidth = 1.1; ctx.stroke();
+
+    // 重心
+    let sre = 0, sim = 0;
+    for(let i=0;i<NS;i++){
+      const t = i/NS;
+      const th = -2*Math.PI*f*t;
+      const r = sig(t)*R/1.55;
+      sre += Math.cos(th)*r; sim += Math.sin(th)*r;
+    }
+    const mx = cx + sre/NS, my = cy + sim/NS;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy); ctx.lineTo(mx, my);
+    ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 2.4; ctx.stroke();
+    ctx.beginPath(); ctx.arc(mx, my, 5, 0, 6.2832);
+    ctx.fillStyle = '#F59E0B'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, 6.2832);
+    ctx.fillStyle = '#0C111D'; ctx.fill();
+
+    /* --- C：频谱 --- */
+    const sy = 400, fmax = 8, nbars = 80;
+    const bw = (ax1-ax0)/nbars;
+    let peak = 0;
+    const vals = [];
+    for(let i=0;i<nbars;i++){
+      const ff = i/(nbars-1)*fmax;
+      const v = spectrum(ff);
+      vals.push(v);
+      peak = Math.max(peak, v);
+    }
+    for(let i=0;i<nbars;i++){
+      const v = vals[i]/peak;
+      const X = ax0 + i*bw;
+      const hh = v*40;
+      const isNear = Math.abs(i/(nbars-1)*fmax - f) < fmax/nbars + 0.001;
+      ctx.fillStyle = isNear ? 'rgba(245,158,11,.95)' : 'rgba(79,70,229,' + (0.25+v*0.6).toFixed(2) + ')';
+      ctx.fillRect(X, sy-hh, bw*0.8, hh);
+    }
+    ctx.strokeStyle = '#F0F2F5';
+    ctx.beginPath(); ctx.moveTo(ax0, sy); ctx.lineTo(ax1, sy); ctx.stroke();
+    ctx.fillStyle = '#B45309';
+    ctx.font = '600 9.5px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'center';
+    [[2,'2 Hz'],[5,'5 Hz']].forEach(pk=>{
+      const X = ax0 + pk[0]/fmax*(ax1-ax0);
+      ctx.fillText(pk[1], X, sy-44);
+    });
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#98A2B3';
+    ctx.font = '500 10px ui-monospace, Consolas, monospace';
+    ctx.fillText('|X(f)|', ax0, sy+14);
+    ctx.textAlign = 'right';
+    ctx.fillText('f →', ax1, sy+14);
+
+    document.getElementById('fwV').textContent = 'f = ' + f.toFixed(2) + ' Hz · |X| = ' + spectrum(f).toFixed(2);
+  }
+
+  const inst = mount(cv, W, H, draw);
+  const sl = document.getElementById('fwF');
+  sl.addEventListener('input', e=>{
+    f = +e.target.value/100;
+    document.getElementById('fwFv').textContent = f.toFixed(2) + ' Hz';
+    inst.redraw();
+  });
+})();
+
+/* ===== 03 方波谐波 ===== */
+(function(){
+  const cv = document.getElementById('cvSq');
+  if(!cv) return;
+  const W = 660, H = 330;
+  let N = 1;
+
+  function partial(t, n){
+    let s = 0;
+    for(let k=0;k<n;k++){
+      const m = 2*k+1;
+      s += Math.sin(2*Math.PI*m*t)/m;
+    }
+    return s*4/Math.PI;
+  }
+
+  function draw(ctx){
+    ctx.clearRect(0,0,W,H);
+    const x0 = 44, x1 = W-30, midY = 140, amp = 64;
+
+    ctx.strokeStyle = '#F0F2F5';
+    ctx.beginPath(); ctx.moveTo(x0, midY); ctx.lineTo(x1, midY); ctx.stroke();
+
+    // 理想方波
+    ctx.beginPath();
+    for(let i=0;i<=600;i++){
+      const t = i/600;
+      const y = (t % 1) < 0.5 ? 1 : -1;
+      const X = x0 + t*(x1-x0), Y = midY - y*amp;
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = 'rgba(152,162,179,.45)';
+    ctx.setLineDash([4,4]); ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 部分和
+    ctx.beginPath();
+    for(let i=0;i<=600;i++){
+      const t = i/600;
+      const y = Math.max(-1.5, Math.min(1.5, partial(t, N)));
+      const X = x0 + t*(x1-x0), Y = midY - y*amp;
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = '#4F46E5'; ctx.lineWidth = 2; ctx.stroke();
+
+    // 频谱条
+    const sy = 296, bh = 46;
+    const maxM = 2*N-1;
+    for(let k=0;k<N;k++){
+      const m = 2*k+1;
+      const X = x0 + (k+0.5)*(x1-x0)/Math.max(8, N*1.6);
+      const h = (1/m)*bh;
+      ctx.fillStyle = 'rgba(79,70,229,.7)';
+      ctx.fillRect(X-6, sy-h, 12, h);
+      if(N <= 10){
+        ctx.fillStyle = '#98A2B3';
+        ctx.font = '500 9px ui-monospace, Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(m + 'f', X, sy+12);
+      }
+    }
+    ctx.fillStyle = '#98A2B3';
+    ctx.font = '500 10px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('幅度 ∝ 1/n', x0, sy-bh-8);
+
+    document.getElementById('sqV').textContent = N + ' 项' + (N>1 ? '（最高 ' + (2*N-1) + ' 次谐波）' : '');
+  }
+
+  const inst = mount(cv, W, H, draw);
+  const sl = document.getElementById('sqN');
+  sl.addEventListener('input', e=>{
+    N = +e.target.value;
+    document.getElementById('sqNv').textContent = N;
+    document.getElementById('sqN').max = 24;
+    inst.redraw();
+  });
+})();
+
+/* ===== 04 低通 ===== */
+(function(){
+  const cv = document.getElementById('cvLp');
+  if(!cv) return;
+  const W = 660, H = 300;
+  let cutoff = 6;
+  const MAXH = 20;
+
+  function y(t){
+    let s = 0;
+    for(let k=0;k<MAXH;k++){
+      const m = 2*k+1;
+      if(m > cutoff) continue;
+      s += Math.sin(2*Math.PI*m*t)/m;
+    }
+    return s*4/Math.PI;
+  }
+
+  function draw(ctx){
+    ctx.clearRect(0,0,W,H);
+    const x0 = 44, x1 = W-30, midY = 130, amp = 62;
+
+    ctx.strokeStyle = '#F0F2F5';
+    ctx.beginPath(); ctx.moveTo(x0, midY); ctx.lineTo(x1, midY); ctx.stroke();
+
+    // 原始方波参考
+    ctx.beginPath();
+    for(let i=0;i<=600;i++){
+      const t = i/600;
+      const v = (t % 1) < 0.5 ? 1 : -1;
+      const X = x0 + t*(x1-x0), Y = midY - v*amp;
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = 'rgba(152,162,179,.4)';
+    ctx.setLineDash([4,4]); ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 滤波后
+    ctx.beginPath();
+    for(let i=0;i<=600;i++){
+      const t = i/600;
+      const v = Math.max(-1.6, Math.min(1.6, y(t)));
+      const X = x0 + t*(x1-x0), Y = midY - v*amp;
+      i ? ctx.lineTo(X,Y) : ctx.moveTo(X,Y);
+    }
+    ctx.strokeStyle = '#4F46E5'; ctx.lineWidth = 2.2; ctx.stroke();
+
+    // 频率梳
+    const by = 250, bh = 40;
+    for(let k=0;k<MAXH;k++){
+      const m = 2*k+1;
+      const X = x0 + k*((x1-x0)/MAXH) + 8;
+      const keep = m <= cutoff;
+      const h = keep ? bh*0.9 : 6;
+      ctx.fillStyle = keep ? 'rgba(79,70,229,.75)' : 'rgba(208,213,221,.9)';
+      ctx.fillRect(X, by-h, 10, h);
+    }
+    const kept = [];
+    for(let k=0;k<MAXH;k++){ const m = 2*k+1; if(m <= cutoff) kept.push(m); }
+    ctx.fillStyle = '#98A2B3';
+    ctx.font = '500 10px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('保留 ' + (kept.length ? kept.join('、') + ' 次谐波' : '无分量'), x0, by+16);
+
+    document.getElementById('lpV').textContent = '截止 ' + cutoff + ' Hz';
+  }
+
+  const inst = mount(cv, W, H, draw);
+  const sl = document.getElementById('lpC');
+  sl.addEventListener('input', e=>{
+    cutoff = +e.target.value;
+    document.getElementById('lpCv').textContent = cutoff + ' Hz';
+    inst.redraw();
+  });
+})();
+
+/* ===== 进度 / 目录 / 进场 ===== */
+(function(){
+  const bar = document.getElementById('progress');
+  const links = [].slice.call(document.querySelectorAll('.toc a'));
+  const secs = links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const els = [].slice.call(document.querySelectorAll('section, .panel'));
+  els.forEach(el=>el.classList.add('rise'));
+  const root = document.documentElement;
+  let tops = [], pending = true, queued = false, lastCur = -1;
+
+  function measure(){
+    const y = window.pageYOffset;
+    tops = secs.map(s=>s.getBoundingClientRect().top + y);
+    pending = els.some(el=>!el.classList.contains('in'));
+    queued = false; tick();
+  }
+  function tick(){
+    queued = false;
+    const y = window.pageYOffset, vh = window.innerHeight || 800;
+    let show = null;
+    if(pending){
+      show = [];
+      for(const el of els){
+        if(el.classList.contains('in')) continue;
+        const r = el.getBoundingClientRect();
+        if(r.top < vh-20 && r.bottom > -20) show.push(el);
+      }
+    }
+    if(bar){
+      const max = root.scrollHeight - vh;
+      bar.style.transform = 'scaleX(' + (max>0 ? Math.min(1,y/max) : 0).toFixed(4) + ')';
+    }
+    let cur = 0;
+    for(let i=0;i<tops.length;i++) if(tops[i]-140 <= y) cur = i;
+    if(cur !== lastCur){
+      lastCur = cur;
+      for(let i=0;i<links.length;i++) links[i].classList.toggle('on', i===cur);
+    }
+    if(show){
+      for(const el of show) el.classList.add('in');
+      if(show.length) pending = els.some(el=>!el.classList.contains('in'));
+    }
+  }
+  window.addEventListener('scroll', ()=>{ if(!queued){ queued = true; requestAnimationFrame(tick); } }, {passive:true});
+  window.addEventListener('resize', measure, {passive:true});
+  window.addEventListener('load', measure);
+  measure(); setTimeout(measure, 150); setTimeout(measure, 800);
+})();
+</script>
+
+</body>
+</html>

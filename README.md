@@ -9,6 +9,9 @@
 | `index.html` | 首页：身份信息、学习轨迹 |
 | `deep-learning/01-mlp.html` | 第 01 章：用 MLP 识别手写数字，含 7 个可交互小节 |
 | `deep-learning/02-gradient-descent.html` | 第 02 章：梯度下降，含 8 个可交互小节 |
+| `deep-learning/03-backprop.html` | 第 03 章：反向传播，含 8 个可交互小节 |
+| `signals/01-convolution.html` | 信号与系统 01：卷积，含 4 个可交互小节 |
+| `signals/02-fourier.html` | 信号与系统 02：傅里叶变换，含 3 个可交互小节 |
 
 ## 参考
 
@@ -18,10 +21,17 @@
 | --- | --- | --- | --- |
 | 1 | But what is a Neural Network? | [BV1bx411M7Zx](https://www.bilibili.com/video/BV1bx411M7Zx/) | 01 · MLP 识别手写数字 |
 | 2 | Gradient descent, how neural networks learn | [BV1Ux411j7ri](https://www.bilibili.com/video/BV1Ux411j7ri/) | 02 · 梯度下降 |
-| 3 | What is backpropagation really doing? | [BV16x411V7Qg](https://www.bilibili.com/video/BV16x411V7Qg/) 上篇 | 03 · 反向传播（计划中） |
-| 4 | Backpropagation calculus | [BV16x411V7Qg](https://www.bilibili.com/video/BV16x411V7Qg/?p=2) 下篇 | 03 · 反向传播（计划中） |
+| 3 | What is backpropagation really doing? | [BV16x411V7Qg](https://www.bilibili.com/video/BV16x411V7Qg/) 上篇 | 03 · 反向传播 |
+| 4 | Backpropagation calculus | [BV16x411V7Qg](https://www.bilibili.com/video/BV16x411V7Qg/?p=2) 下篇 | 03 · 反向传播 |
 
 B 站系列合集：<https://space.bilibili.com/88461692/channel/seriesdetail?sid=1528929>
+
+信号与系统部分同样参考 3Blue1Brown 的两期可视化：
+
+| 视频 | B 站 | 对应章节 |
+| --- | --- | --- |
+| 那么……什么是卷积？ | [BV1Vd4y1e7pj](https://www.bilibili.com/video/BV1Vd4y1e7pj/) | 卷积 |
+| 形象展示傅里叶变换 | [BV1pW411J7s8](https://www.bilibili.com/video/BV1pW411J7s8/) | 傅里叶变换 |
 
 站点不是原片的文字搬运：原片建立直觉的部分直接沿用，每一处数学都补上了能在浏览器里动手操作的版本。系列之外会继续写 CNN 与注意力机制。
 
