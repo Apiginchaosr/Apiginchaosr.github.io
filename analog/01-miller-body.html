@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="模拟集成电路精粹：密勒效应为什么能把 5 fF 放大成 300 fF，背栅效应为什么让阈值电压随源极电位漂移。" />
+<title>01 · 密勒效应与背栅效应 · Apiginchaosr</title>
+<style>
+
+  :root{
+    --bg:#F4F5F8;
+    --card:#FFFFFF;
+    --ink:#0C111D;
+    --body:#475467;
+    --muted:#98A2B3;
+    --line:#EAECF0;
+    --line-strong:#D0D5DD;
+    --indigo:#4F46E5;
+    --indigo-2:#4338CA;
+    --indigo-soft:#EEF0FF;
+    --cyan:#4F46E5;
+    --violet:#7C3AED;
+    --pink:#E05252;
+    --amber:#B54708;
+    --green:#0E9F6E;
+    --radius:18px;
+    --shadow-sm:0 1px 2px rgba(16,24,40,.04);
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 14px 34px -16px rgba(16,24,40,.14);
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Inter,sans-serif;
+    --mono:ui-monospace,"SF Mono",Consolas,"Cascadia Code",monospace;
+    --math:"Cambria Math","Latin Modern Math",Cambria,Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.78;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(820px 460px at 8% -10%, rgba(79,70,229,.10), transparent 62%),
+      radial-gradient(700px 400px at 94% 0%, rgba(14,159,110,.08), transparent 60%);
+  }
+  /* 顶部阅读进度 */
+  #progress{
+    position:fixed;top:0;left:0;height:2px;width:100%;z-index:99;
+    background:linear-gradient(90deg,#4F46E5,#7C3AED);
+    transform:scaleX(0);transform-origin:0 50%;
+    will-change:transform;
+  }
+  /* 导航 */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 clamp(18px,4vw,56px);height:62px;
+    background:rgba(244,245,248,.82);backdrop-filter:blur(14px) saturate(160%);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:650;font-size:14.5px;letter-spacing:-.02em}
+  .logo-mark{
+    width:27px;height:27px;border-radius:8px;display:grid;place-items:center;flex:none;
+    background:linear-gradient(145deg,#6366F1,#4338CA);
+    box-shadow:0 3px 10px -2px rgba(79,70,229,.45);
+  }
+  .logo-mark::before{content:"◈";color:#fff;font-size:12px;line-height:1}
+  .logo-txt{font-family:var(--sans);font-size:14.5px;letter-spacing:-.02em}
+  .nav-r{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--body)}
+  .nav-r a{color:var(--body);text-decoration:none;transition:color .25s;display:inline-flex;align-items:center;gap:6px}
+  .nav-r a:hover{color:var(--indigo)}
+  .chip{
+    border:1px solid var(--line);background:#fff;border-radius:100px;
+    padding:5px 12px;font-size:10.5px;letter-spacing:.08em;color:var(--muted);
+    text-transform:uppercase;box-shadow:var(--shadow-sm);
+  }
+
+  /* 布局：侧栏 + 正文 */
+  .shell{
+    display:grid;grid-template-columns:200px minmax(0,1fr);
+    gap:clamp(24px,4vw,64px);
+    max-width:1200px;margin:0 auto;padding:0 clamp(18px,4vw,56px);
+    align-items:start;
+  }
+  .toc{position:sticky;top:88px;padding:30px 0 40px;font-size:12px}
+  .toc-h{color:var(--muted);letter-spacing:.18em;font-size:9.5px;text-transform:uppercase;margin-bottom:12px}
+  .toc a{
+    display:block;color:var(--body);text-decoration:none;
+    padding:8px 0 8px 12px;border-left:2px solid var(--line);
+    transition:all .25s;line-height:1.5;
+  }
+  .toc a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+  .toc a.on{color:var(--indigo);border-left-color:var(--indigo);font-weight:550}
+  @media (max-width: 900px){
+    .shell{display:block;max-width:none}
+    .toc{display:none}
+  }
+
+  main{padding-bottom:40px;min-width:0}
+
+  /* 章节头 */
+  .chap-head{padding:clamp(36px,6vw,64px) 0 clamp(24px,4vw,36px)}
+  .crumb{font-size:10.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:20px}
+  .crumb span{color:var(--indigo)}
+  h1{font-size:clamp(30px,4.6vw,46px);line-height:1.18;letter-spacing:-.03em;font-weight:650;margin-bottom:18px}
+  h1 em{
+    font-style:normal;
+    background:linear-gradient(100deg,#4F46E5,#7C3AED 70%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .abstract{color:var(--body);font-size:clamp(14px,1.6vw,15.5px);max-width:60ch}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .tag{
+    font-size:10.5px;padding:4px 10px;border-radius:100px;
+    background:var(--indigo-soft);color:var(--indigo-2);font-weight:500;
+  }
+  /* 参考来源 */
+  .src{
+    display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-top:18px;padding:8px 16px 8px 8px;border-radius:100px;
+    border:1px solid var(--line);background:#fff;text-decoration:none;
+    font-size:12.5px;line-height:1.4;color:var(--body);
+    transition:border-color .2s,box-shadow .2s,background .2s;
+  }
+  .src:hover{border-color:#C7CDFB;background:#FDFDFF;box-shadow:0 6px 16px -8px rgba(79,70,229,.4)}
+  .src .src-a:hover{text-decoration:underline;text-underline-offset:2px}
+  .src .src-k{
+    font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);
+    background:var(--indigo-soft);padding:3px 8px;border-radius:100px;font-weight:600;
+  }
+  .src .src-t b{color:var(--ink);font-weight:600}
+  .src .src-a{color:var(--indigo);font-weight:500;white-space:nowrap;text-decoration:none}
+  .src .src-a + .src-a{padding-left:10px;border-left:1px solid var(--line);line-height:1.1}
+  .src .src-links{display:inline-flex;align-items:center;gap:0;white-space:nowrap}
+
+
+  /* 第一层滤波器 */
+  .fl-wrap{
+    display:grid;grid-template-columns:auto auto auto;
+    gap:clamp(12px,2.4vw,26px);justify-content:center;align-items:center;
+  }
+  .fl-col{display:grid;gap:8px;justify-items:center}
+  .fl-col canvas{display:block;border-radius:8px;box-shadow:0 0 0 1px var(--line)}
+  .fl-cap{font-size:10.5px;color:var(--muted)}
+  .fl-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+  .fl-tab{
+    width:46px;height:46px;padding:0;border:1px solid var(--line);border-radius:10px;
+    background:#fff;cursor:pointer;display:grid;place-items:center;transition:.18s;
+  }
+  .fl-tab canvas{display:block;border-radius:5px}
+  .fl-tab.on{border-color:var(--indigo);box-shadow:0 0 0 2px var(--indigo-soft)}
+  .fl-tab:hover{border-color:#C7CDFB}
+  @media (max-width:760px){
+    .fl-wrap{grid-template-columns:auto auto}
+    .fl-wrap .fl-col:last-child{grid-column:1/-1}
+  }
+
+  /* 章节 */
+  section{scroll-margin-top:84px;padding:clamp(34px,5vw,52px) 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
+  .s-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
+  .s-idx{
+    font-family:var(--mono);font-size:11px;color:var(--indigo);
+    background:var(--indigo-soft);border-radius:6px;padding:2px 8px;flex:none;font-weight:600;
+  }
+  h2{font-size:clamp(20px,2.5vw,25px);font-weight:650;letter-spacing:-.025em;line-height:1.4}
+  h3{font-size:15px;font-weight:650;margin:26px 0 10px;color:var(--ink);letter-spacing:-.01em}
+  p{color:var(--body);font-size:14.8px;margin:12px 0;max-width:68ch;line-height:1.85}
+  p b,li b{color:var(--ink);font-weight:600}
+  p .hl{color:var(--indigo);font-weight:500}
+  ul,ol{margin:12px 0 12px 2px;padding-left:20px;max-width:68ch}
+  li{color:var(--body);font-size:14.5px;margin:7px 0;line-height:1.8}
+  code{
+    font-family:var(--mono);font-size:12.8px;background:#F2F4F7;
+    border:1px solid var(--line);padding:1.5px 6px;border-radius:5px;color:#344054;
+  }
+  strong.warn{color:var(--amber);font-weight:600}
+
+  /* 公式 */
+  .formula{
+    font-family:var(--math);font-size:clamp(17px,2vw,20px);letter-spacing:.01em;
+    color:var(--ink);padding:18px 22px;margin:18px 0;
+    border-left:3px solid var(--indigo);border-radius:0 12px 12px 0;
+    background:#F7F8FC;
+    overflow-x:auto;line-height:2.1;
+  }
+  .formula .v{font-style:italic;font-family:var(--math)}
+  .formula .sub{font-size:.72em;vertical-align:-.28em;font-style:italic}
+  .formula .sup{font-size:.72em;vertical-align:.42em}
+  .formula .op{color:var(--muted);padding:0 .3em;font-style:normal}
+  .formula .note{display:block;font-family:var(--sans);font-size:11.5px;color:var(--muted);letter-spacing:.02em;margin-top:6px;font-style:normal;line-height:1.7}
+
+  /* 卡片 */
+  .panel{
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    background:var(--card);box-shadow:var(--shadow);
+    margin:24px 0;position:relative;
+  }
+  .panel-h{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding:13px 18px;border-bottom:1px solid var(--line);
+    font-size:11px;letter-spacing:.06em;color:var(--muted);
+  }
+  .panel-h .dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--indigo);margin-right:8px;vertical-align:1px;
+  }
+  .panel-b{padding:clamp(16px,2.4vw,24px)}
+
+  /* 提示块 */
+  .aside{
+    border:1px solid #FEDF89;border-radius:12px;padding:14px 18px;margin:20px 0;
+    background:#FFFAEB;font-size:13.6px;color:#7A4E1E;line-height:1.75;max-width:70ch;
+  }
+  .aside b{color:#B54708}
+  .aside .lbl{font-size:10px;letter-spacing:.14em;color:#B54708;display:block;margin-bottom:5px;text-transform:uppercase;font-weight:600}
+
+  /* 控件 */
+  .ctrl-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{
+    font-size:12px;font-weight:500;
+    padding:8px 14px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--line-strong);background:#fff;color:var(--body);
+    transition:all .2s;line-height:1.2;
+  }
+  .btn:hover{border-color:#B4BAC6;color:var(--ink);background:#FCFCFD}
+  .btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;font-weight:600;box-shadow:0 2px 8px -2px rgba(79,70,229,.5)}
+  .btn.primary:hover{background:var(--indigo-2);color:#fff}
+  .btn.on{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+  .btn.sm{padding:5px 10px;font-size:11px}
+  .num-btns{display:flex;gap:5px;flex-wrap:wrap}
+  .num-btns .btn{width:32px;padding:6px 0;text-align:center;font-size:11.5px}
+
+  /* 数字网格 */
+  .grid-wrap{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(16px,3vw,34px);align-items:start}
+  @media (max-width: 700px){.grid-wrap{grid-template-columns:minmax(0,1fr)}}
+  #gridcv{
+    display:block;border-radius:12px;cursor:crosshair;
+    border:1px solid var(--line);box-shadow:0 8px 24px -12px rgba(16,24,40,.18);
+  }
+  .readout{display:grid;gap:8px;font-size:11.5px;color:var(--muted);align-content:start;padding-top:2px}
+  .readout .kv{display:flex;gap:10px;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:6px}
+  .readout .kv b{color:var(--ink);font-weight:600}
+
+  /* 柱状图 */
+  .bars{display:flex;align-items:flex-end;gap:clamp(4px,1vw,10px);padding-top:8px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+  .bar-track{
+    width:100%;height:118px;display:flex;align-items:flex-end;
+    background:#F2F4F7;border-radius:6px;overflow:hidden;
+  }
+  .bar-fill{
+    width:100%;background:linear-gradient(180deg,#818CF8,#4F46E5);
+    border-radius:6px 6px 0 0;transition:height .5s cubic-bezier(.16,1,.3,1);
+    height:0;
+  }
+  .bar-fill.win{background:linear-gradient(180deg,#4F46E5,#3730A3);box-shadow:0 0 12px rgba(79,70,229,.35)}
+  .bar-lbl{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  .bar-val{font-family:var(--mono);font-size:9.5px;color:var(--muted);height:12px}
+
+  /* 神经元 demo */
+  .neu-demo{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:clamp(16px,3vw,30px);align-items:center}
+  @media (max-width: 720px){.neu-demo{grid-template-columns:minmax(0,1fr)}}
+  .neu-rows{display:grid;gap:10px}
+  #smBars{justify-content:flex-start;gap:20px;margin-top:26px !important}
+  #smBars .bar-col{flex:0 0 88px}
+  #smBars .bar-track{height:112px}
+  .neu-row{display:grid;grid-template-columns:max-content 1fr 84px;gap:14px;align-items:center}
+  .neu-x{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;
+    background:#E4E7EC;outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;border:2px solid #fff;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:var(--indigo);
+    border:2px solid #fff;box-shadow:0 2px 6px rgba(79,70,229,.4);cursor:pointer;
+  }
+  .neu-w{font-family:var(--mono);font-size:11px;color:var(--indigo);text-align:right}
+  .neu-out{
+    border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;
+    background:#FCFCFD;
+  }
+  .neu-out .big{font-family:var(--mono);font-size:26px;color:var(--indigo);line-height:1.3}
+  .neu-out .lbl{font-size:9.5px;letter-spacing:.05em;color:var(--muted)}
+
+  /* 网络 canvas 面板 */
+  .net-stage{position:relative;background:#FCFCFD}
+  #netcv{display:block;width:100%;height:auto}
+  .net-status{
+    display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);letter-spacing:.02em;min-height:40px;
+  }
+  .net-status .ph{color:var(--indigo);font-weight:600}
+  .net-summary{
+    display:flex;flex-wrap:wrap;gap:22px;padding:14px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .net-summary b{color:var(--ink);font-weight:600}
+  .net-summary .win b{color:var(--indigo)}
+
+  /* 曲线 */
+  .curve-box{position:relative}
+  svg.curve{width:100%;height:auto;display:block;overflow:visible}
+  .curve-lbl{font-family:var(--mono);font-size:9.5px;fill:var(--muted);letter-spacing:.04em}
+
+  /* 流程回顾 */
+  .flow{display:grid;gap:0;margin:22px 0}
+  .flow-step{display:grid;grid-template-columns:26px minmax(0,1fr);gap:16px;padding:14px 0;position:relative}
+  .flow-step:not(:last-child)::before{
+    content:"";position:absolute;left:12.5px;top:38px;bottom:-4px;width:1px;
+    background:linear-gradient(180deg,#C7D2FE,#EEF0FF);
+  }
+  .flow-n{
+    width:26px;height:26px;border-radius:50%;border:1px solid #C7D2FE;
+    display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--indigo);
+    background:#fff;z-index:1;font-weight:600;
+  }
+  .flow-t{font-size:14px;font-weight:650;margin-bottom:3px}
+  .flow-d{font-size:13px;color:var(--body);line-height:1.7}
+  .flow-d code{font-size:12px}
+
+  /* 公式速查 */
+  .cheat{display:grid;gap:10px}
+  .cheat-row{
+    display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;align-items:center;
+    padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;
+  }
+  .cheat-k{font-size:10.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+  .cheat-v{font-family:var(--math);font-size:15.5px;color:var(--ink);overflow-x:auto;white-space:nowrap}
+  @media (max-width: 640px){
+    .cheat-row{grid-template-columns:minmax(0,1fr);gap:6px}
+    .cheat-v{white-space:normal}
+  }
+
+  .foot-nav{
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    border-top:1px solid var(--line);padding:30px 0 60px;margin-top:20px;
+  }
+  .foot-nav a{
+    font-size:12.5px;color:var(--body);text-decoration:none;
+    border:1px solid var(--line);border-radius:8px;padding:10px 16px;transition:all .25s;background:#fff;
+  }
+  .foot-nav a:hover{color:var(--indigo);border-color:#C7D2FE}
+  .foot-nav a.dim{opacity:.45;pointer-events:none}
+
+  .rise{transform:translateY(14px);transition:transform .55s cubic-bezier(.16,1,.3,1)}
+  .rise.in{transform:none}
+
+  @media (max-width: 620px){
+    .panel-h{flex-direction:column;align-items:flex-start;gap:10px}
+    .num-btns{width:100%}
+    .num-btns .btn{flex:1 1 0;width:auto;padding:6px 0}
+    .nav-r .chip{display:none}
+    h1{font-size:clamp(26px,7vw,32px)}
+    p,li{font-size:14px}
+    .net-summary{gap:14px}
+    #smBars .bar-col{flex:1 1 0;min-width:0}
+  }
+
+
+  /* ---- 第 02 章新增组件 ---- */
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+  .metrics{
+    display:flex;gap:18px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--muted);
+  }
+  .metrics b{color:var(--ink);font-weight:600;font-family:var(--mono)}
+  .presets{display:flex;gap:6px;flex-wrap:wrap}
+  .tip-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+  .tip{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fff}
+  .tip h4{font-size:13px;font-weight:650;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .tip h4 span{
+    font-size:9.5px;color:var(--indigo);background:var(--indigo-soft);
+    padding:2px 8px;border-radius:100px;font-weight:600;flex:none;
+  }
+  .tip h4 .t-bad{color:#B54708;background:#FEF0C7}
+  .tip h4 .t-good{color:#027A48;background:#ECFDF3}
+  .tip p{font-size:12.5px;color:var(--body);line-height:1.7;margin:0;max-width:none}
+  canvas{display:block}
+  @media (max-width:640px){.tip-grid{grid-template-columns:1fr}}
+
+
+  /* ---- 本章新增 ---- */
+  .cmp{display:grid;gap:10px;margin:18px 0}
+  .cmp-row{display:grid;grid-template-columns:118px minmax(0,1fr) 96px;gap:14px;align-items:center;font-size:12.5px}
+  .cmp-l{color:var(--muted);font-size:11.5px}
+  .cmp-track{height:26px;border-radius:6px;background:#EEF0F4;position:relative;overflow:hidden}
+  .cmp-fill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:6px;transition:width .4s linear}
+  .cmp-v{font-family:var(--mono);font-size:11.5px;color:var(--ink);text-align:right}
+  .cmt{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.7}
+
+  .sgn{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:4px}
+  .sgn-cell{
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;
+    transition:.2s;
+  }
+  .sgn-cell .k{font-size:10px;color:var(--muted);letter-spacing:.06em}
+  .sgn-cell .r{font-size:13px;font-weight:600;color:var(--ink);margin-top:4px}
+  .sgn-cell.on{border-color:#C7CDFB;background:#F8F9FF;box-shadow:0 0 0 3px var(--indigo-soft)}
+  .sgn-up{color:var(--indigo)}
+  .sgn-dn{color:#B54708}
+
+  .ch-sliders{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:12px 26px;margin-top:10px;padding-top:14px;border-top:1px solid var(--line);
+  }
+  .ch-sliders .neu-row{grid-template-columns:44px minmax(0,1fr) 44px;gap:10px}
+  .chain{display:grid;gap:8px;margin-top:18px}
+  .chain-row{
+    display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:12px;color:var(--body);
+  }
+  .chain-row .lead{font-size:12.5px;color:var(--ink);font-family:var(--sans);font-weight:600}
+  .chip-v{
+    padding:3px 8px;border-radius:6px;background:#F2F4F7;border:1px solid var(--line);
+    font-family:var(--mono);font-size:11.5px;color:var(--ink);
+  }
+  .chip-v.acc{background:var(--indigo-soft);border-color:#DFE2FB;color:var(--indigo-2)}
+  .chain-row .eq{color:var(--muted)}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+
+  .dims{display:block;max-width:100%;height:auto;margin:6px auto}
+  .dims text{font-family:var(--mono);fill:var(--muted);font-size:10px}
+
+  @media (max-width:760px){
+    .ch-sliders{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media (max-width:640px){
+    .cmp-row{grid-template-columns:92px minmax(0,1fr) 74px;gap:10px}
+    .sgn{grid-template-columns:1fr}
+    .chain-row{font-size:11px}
+  }
+
+  /* ---- 本章新增 ---- */
+  .im{
+    font-family:var(--mono);font-size:.88em;color:var(--ink);
+    background:#F7F8FB;padding:1px 4px;border-radius:4px;white-space:nowrap;
+  }
+  .fig{
+    margin:24px 0;padding:18px 20px 12px;border:1px solid var(--line);
+    border-radius:14px;background:#fff;
+  }
+  .fig svg{display:block;width:100%;height:auto;max-width:620px;margin:0 auto}
+  .fig-cap{
+    font-size:11.5px;color:var(--muted);text-align:center;
+    margin-top:10px;line-height:1.75;
+  }
+  .fig-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0}
+  .fig-2 .fig{margin:0}
+  .tbl{width:100%;border-collapse:collapse;margin:20px 0;font-size:13px}
+  .tbl th,.tbl td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left}
+  .tbl th{font-size:11px;letter-spacing:.04em;color:var(--muted);font-weight:600;background:#FAFBFC;white-space:nowrap}
+  .tbl td{font-variant-numeric:tabular-nums}
+  .tbl tr:last-child td{border-bottom:0}
+  @media (max-width:700px){.fig-2{grid-template-columns:minmax(0,1fr)}}
+
+  /* ---- 图内 ---- */
+  .fig svg .wire,.fig svg .sym{
+    fill:none;stroke:#0C111D;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+  }
+  .fig svg .axis{fill:none;stroke:#D0D5DD;stroke-width:1}
+  .fig svg .dash{fill:none;stroke:#B4BCCA;stroke-width:1.2;stroke-dasharray:4 3}
+  .fig svg .dep{fill:none;stroke:#4F46E5;stroke-width:1.4;stroke-dasharray:5 4}
+  .fig svg .nd{fill:#0C111D}
+  .fig svg .curve-acc{fill:none;stroke:#4F46E5;stroke-width:2.2;stroke-linejoin:round}
+  .fig svg .curve-ideal{fill:none;stroke:#B4BCCA;stroke-width:1.8;stroke-dasharray:5 4;stroke-linejoin:round}
+  .fig svg .curve-dim{fill:none;stroke:#C7CEE8;stroke-width:2;stroke-linejoin:round}
+  .fig svg text{font-family:var(--mono);font-size:10.5px;fill:#667085}
+  .fig svg .k{fill:#0C111D;font-weight:600;font-size:11px}
+  .fig svg .acc{fill:#4F46E5}
+  .fig svg .dim{fill:#98A2B3}
+  .fig svg .warn{fill:#B54708;font-size:10px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<header class="nav">
+  <a class="logo" href="../index.html">
+    <span class="logo-mark"></span>
+    <span class="logo-txt">Apiginchaosr</span>
+  </a>
+  <div class="nav-r">
+    <span class="chip">Analog 01</span>
+    <a href="../index.html">← 首页</a>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="toc">
+    <div class="toc-h">Contents</div>
+    <a href="#a1" class="on">01 5 fF 变成 300 fF</a>
+    <a href="#a2">02 米勒定理</a>
+    <a href="#a3">03 主极点与带宽</a>
+    <a href="#a4">04 对策：共源共栅</a>
+    <a href="#a5">05 源极不接地</a>
+    <a href="#a6">06 γ 有多大</a>
+    <a href="#a7">07 三个后果</a>
+    <a href="#a8">08 小结</a>
+  </aside>
+
+  <main>
+    <div class="chap-head">
+      <div class="crumb">ANALOG IC <span>/</span> CHAPTER 01</div>
+      <h1>两个<em>寄生</em>效应</h1>
+      <p class="abstract">
+        密勒效应把一个 5 fF 的电容变成 300 fF，背栅效应让阈值电压跟着源极电位走。
+        这两个参数都不在原理图上，也没有人设计它们，但都直接决定电路能不能用。
+      </p>
+      <div class="meta-row">
+        <span class="tag">Miller</span>
+        <span class="tag">Cascode</span>
+        <span class="tag">Body Effect</span>
+        <span class="tag">γ</span>
+      </div>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section id="a1">
+      <div class="s-head"><span class="s-idx">01</span><h2>5 fF 的电容，26 kHz 的带宽</h2></div>
+
+      <p>
+        一级共源放大器，参数给全：<span class="im">g<sub>m</sub> = 1 mA/V</span>，
+        <span class="im">R<sub>D</sub> = 50 kΩ</span>，电压增益
+        <span class="im">A<sub>v</sub> ≈ −g<sub>m</sub>R<sub>D</sub> = −50</span>。
+        信号源内阻 <span class="im">R<sub>s</sub> = 20 kΩ</span>，
+        管子本身的电容 <span class="im">C<sub>gs</sub> = 45 fF</span>，
+        栅漏交叠电容 <span class="im">C<sub>gd</sub> = 5 fF</span>。
+      </p>
+
+      <p>
+        只算 <span class="im">C<sub>gs</sub></span> 的话，输入端是一个 RC 低通：
+      </p>
+
+      <div class="formula">
+        <span class="v">f</span><span class="sub">p</span> <span class="op">=</span>
+        1 <span class="op">/</span> (2π<span class="v">R</span><span class="sub">s</span><span class="v">C</span><span class="sub">gs</span>)
+        <span class="op">=</span> 1 <span class="op">/</span> (2π × 20 kΩ × 45 fF)
+        <span class="op">≈</span> <b>177 kHz</b>
+      </div>
+
+      <p>
+        但 <span class="im">C<sub>gd</sub></span> 不是接地的。它跨在栅极和漏极之间，
+        而漏极电压是栅极的 −50 倍。两端电压差不是
+        <span class="im">v<sub>i</sub></span>，而是
+        <span class="im">v<sub>i</sub> − v<sub>o</sub> = v<sub>i</sub>(1 + 50) = 51v<sub>i</sub></span>。
+        同一个电容，充放电电流大了 51 倍。
+      </p>
+
+      <p>
+        从输入端看，它等效成 <span class="im">5 fF × 51 = 255 fF</span>。加上原来的
+        <span class="im">C<sub>gs</sub></span>：
+      </p>
+
+      <div class="formula">
+        <span class="v">C</span><span class="sub">in</span> <span class="op">=</span>
+        <span class="v">C</span><span class="sub">gs</span> <span class="op">+</span>
+        <span class="v">C</span><span class="sub">gd</span>(1 <span class="op">+</span> |<span class="v">A</span><span class="sub">v</span>|)
+        <span class="op">=</span> 45 <span class="op">+</span> 5 × 51
+        <span class="op">=</span> <b>300 fF</b>
+        <span class="note">零点没有变，极点变成 1/(2π × 20 kΩ × 300 fF) ≈ 26.5 kHz，比原来低了 6.7 倍。</span>
+      </div>
+
+      <p>
+        一个 5 fF 的电容，把带宽从 177 kHz 拉到 26.5 kHz。这就是密勒效应：
+        <b>跨接在反相增益两端的电容，在输入端会被放大 (1 + |A|) 倍。</b>
+      </p>
+
+      <div class="fig">
+        <svg id="f1" viewBox="56 28 384 324" role="img" aria-label="共源放大器与两个寄生电容"></svg>
+        <div class="fig-cap">共源级。<span class="im">C<sub>gs</sub></span> 一端接地，只算一次；
+          <span class="im">C<sub>gd</sub></span> 跨在输入输出之间，被放大 51 倍。</div>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section id="a2">
+      <div class="s-head"><span class="s-idx">02</span><h2>米勒定理：把跨接阻抗拆成两个接地阻抗</h2></div>
+
+      <p>
+        上面那个 51 倍不是巧合。设节点 1、2 之间接一个阻抗
+        <span class="im">Z</span>，节点 2 的电压是节点 1 的
+        <span class="im">−A</span> 倍（A &gt; 0，反相放大）。从节点 1 流出的电流：
+      </p>
+
+      <div class="formula">
+        <span class="v">i</span><span class="sub">1</span> <span class="op">=</span>
+        (<span class="v">v</span><span class="sub">1</span> <span class="op">−</span>
+        <span class="v">v</span><span class="sub">2</span>) <span class="op">/</span> <span class="v">Z</span>
+        <span class="op">=</span>
+        <span class="v">v</span><span class="sub">1</span>(1 <span class="op">+</span> <span class="v">A</span>) <span class="op">/</span> <span class="v">Z</span>
+      </div>
+
+      <p>
+        所以从节点 1 看进去的等效阻抗是 <span class="im">Z/(1+A)</span>。
+        对电容 <span class="im">Z = 1/(jωC)</span>，等效电容就是
+        <span class="im">C(1+A)</span>。同一个推导换到节点 2，得到
+        <span class="im">Z/(1+1/A)</span>，A 大时约等于
+        <span class="im">Z</span>：
+      </p>
+
+      <div class="formula">
+        <span class="v">C</span><span class="sub">in</span> <span class="op">=</span>
+        <span class="v">C</span>(1 <span class="op">+</span> <span class="v">A</span>)
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <span class="v">C</span><span class="sub">out</span> <span class="op">=</span>
+        <span class="v">C</span>(1 <span class="op">+</span> 1/<span class="v">A</span>)
+        <span class="op">≈</span> <span class="v">C</span>
+        <span class="note">密勒效应是单向的：输入端被放大，输出端几乎不变。所以它只影响输入极点。</span>
+      </div>
+
+      <div class="fig">
+        <svg id="f2" viewBox="0 0 570 310" role="img" aria-label="米勒等效：跨接电容拆成两个接地电容"></svg>
+        <div class="fig-cap">左：跨接的 <span class="im">C<sub>gd</sub></span>。右：等效成输入端的
+          <span class="im">C(1+A)</span> 和输出端的 <span class="im">C(1+1/A)</span>。</div>
+      </div>
+
+      <p><b>用它的前提</b>，三条缺一不可：</p>
+
+      <p>
+        1. 增益 A 是已知的、并且在这一段频率上基本不变。A 本身随频率掉，密勒等效也就跟着变。
+        <br>
+        2. 电路是单向的，信号只从输入走到输出。强反馈里这个等效会失效。
+        <br>
+        3. 它只用来求<b>端口等效阻抗</b>。拿它算噪声、算功耗、算电容上的电荷，都是错的。
+      </p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section id="a3">
+      <div class="s-head"><span class="s-idx">03</span><h2>主极点：增益和带宽不能同时要</h2></div>
+
+      <p>
+        把密勒放大后的电容代进极点表达式，输入极点是：
+      </p>
+
+      <div class="formula">
+        <span class="v">f</span><span class="sub">p1</span> <span class="op">=</span>
+        1 <span class="op">/</span> { 2π<span class="v">R</span><span class="sub">s</span> [
+        <span class="v">C</span><span class="sub">gs</span> <span class="op">+</span>
+        <span class="v">C</span><span class="sub">gd</span>(1 <span class="op">+</span>
+        <span class="v">g</span><span class="sub">m</span>(<span class="v">R</span><span class="sub">D</span>
+        <span class="op">∥</span> <span class="v">r</span><span class="sub">o</span>)) ] }
+      </div>
+
+      <p>
+        输出端也有一个极点，
+        <span class="im">f<sub>p2</sub> = 1/(2π(R<sub>D</sub>∥r<sub>o</sub>)(C<sub>db</sub> + C<sub>gd</sub>(1+1/A)))</span>。
+        但 <span class="im">R<sub>D</sub></span> 通常只有几十 kΩ，比
+        <span class="im">R<sub>s</sub></span> 小得多，所以
+        <span class="im">f<sub>p2</sub></span> 远高于
+        <span class="im">f<sub>p1</sub></span>。<b>输入极点就是主极点</b>，
+        它一个人决定了 −3 dB 带宽。
+      </p>
+
+      <p>
+        把增益和带宽乘起来，会得到一个不太舒服的结论：
+      </p>
+
+      <div class="formula">
+        <span class="v">A</span><span class="sub">v</span> <span class="op">·</span>
+        <span class="v">f</span><span class="sub">p</span>
+        <span class="op">=</span>
+        <span class="v">A</span><span class="sub">v</span> <span class="op">/</span> { 2π<span class="v">R</span><span class="sub">s</span>
+        <span class="v">C</span><span class="sub">gd</span>(1 <span class="op">+</span>
+        <span class="v">A</span><span class="sub">v</span>) }
+        <span class="op">≈</span>
+        1 <span class="op">/</span> (2π<span class="v">R</span><span class="sub">s</span>
+        <span class="v">C</span><span class="sub">gd</span>)
+        <span class="note">A 消掉了。把增益做大一倍，带宽就窄一半，乘积不变。</span>
+      </div>
+
+      <div class="fig">
+        <svg id="f3" viewBox="0 0 560 300" role="img" aria-label="有无密勒效应的幅频特性对比"></svg>
+        <div class="fig-cap">同一级放大器。灰色是只算 <span class="im">C<sub>gs</sub></span> 的理想情况，
+          靛蓝是实际带 <span class="im">C<sub>gd</sub></span> 的情况。低频增益一样，拐点差了 6.7 倍。</div>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section id="a4">
+      <div class="s-head"><span class="s-idx">04</span><h2>对策：让跨接电容看到低阻节点</h2></div>
+
+      <p>
+        密勒放大倍数等于 <span class="im">1 + |A|</span>，A 是跨接电容两端的电压增益。
+        如果能让这个增益接近 0，放大倍数就退化成 1。共源共栅（cascode）做的就是这件事。
+      </p>
+
+      <p>
+        在输入管 <span class="im">M<sub>1</sub></span> 的漏极上再串一个共栅管
+        <span class="im">M<sub>2</sub></span>，栅极接固定偏置
+        <span class="im">V<sub>B</sub></span>。M<sub>1</sub> 漏极看到的负载不再是
+        <span class="im">R<sub>D</sub></span>，而是 M<sub>2</sub> 源极看进去的阻抗，
+        约 <span class="im">1/g<sub>m2</sub></span>。于是这个节点的增益是
+        <span class="im">−g<sub>m1</sub>/g<sub>m2</sub> ≈ −1</span>。
+      </p>
+
+      <div class="formula">
+        <span class="v">C</span><span class="sub">in</span> <span class="op">=</span>
+        <span class="v">C</span><span class="sub">gs1</span> <span class="op">+</span>
+        <span class="v">C</span><span class="sub">gd1</span>(1 <span class="op">+</span> 1)
+        <span class="op">≈</span> <span class="v">C</span><span class="sub">gs1</span> <span class="op">+</span>
+        2<span class="v">C</span><span class="sub">gd1</span>
+        <span class="note">对比原来的 C<sub>gs1</sub> + 51C<sub>gd1</sub>，输入电容基本只剩 C<sub>gs1</sub>。</span>
+      </div>
+
+      <p>
+        代价是实打实的，四条：
+      </p>
+
+      <p>
+        1. <b>摆幅</b>。输出最高只能到 <span class="im">V<sub>DD</sub> − 2V<sub>ov</sub></span>，多堆一个管子就少一个过驱动电压。
+        <br>
+        2. <b>偏置</b>。多一条 <span class="im">V<sub>B</sub></span>，而且它必须保证 M<sub>2</sub> 一直在饱和区。
+        <br>
+        3. <b>新极点</b>。M<sub>1</sub> 漏极那个节点阻抗约 <span class="im">1/g<sub>m2</sub></span>，
+        和 <span class="im">C<sub>gd1</sub> + C<sub>db1</sub></span> 组成一个新极点。通常频率很高，
+        但增益做大之后它会掉下来，成为新的瓶颈。
+        <br>
+        4. <b>噪声</b>。M<sub>2</sub> 会贡献一份噪声，折算到输入大概增加 10%–30%。
+      </p>
+
+      <div class="fig">
+        <svg id="f4" viewBox="0 0 520 378" role="img" aria-label="共源共栅放大器"></svg>
+        <div class="fig-cap">共源共栅。<span class="im">C<sub>gd1</sub></span> 跨在栅极和 X 之间，而 X 的阻抗约 <span class="im">1/g<sub>m2</sub></span>，节点增益只有约 −1，密勒放大基本消失。</div>
+      </div>
+
+      <p>
+        另外两种做法也常用：差分对把输入管的漏极接到另一个管子的源极，效果类似；
+        <b>中和电容</b>（neutralization）是在栅漏之间再并一个反相驱动的电容，把
+        <span class="im">C<sub>gd</sub></span> 的电流抵消掉，只在窄带里有意义。
+      </p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section id="a5">
+      <div class="s-head"><span class="s-idx">05</span><h2>源极不接地时，阈值开始漂</h2></div>
+
+      <p>
+        NMOS 的衬底通常接全芯片最低电位。只要源极和衬底同电位（
+        <span class="im">V<sub>SB</sub> = 0</span>），前面所有公式里的
+        <span class="im">V<sub>TH</sub></span> 就是一个常数。
+      </p>
+
+      <p>
+        但源极并不总是接地：源跟随器的输出就取在源极上；cascode 的下管源极接在中间节点；
+        传输门里信号从源极进出。这些情况下
+        <span class="im">V<sub>SB</sub> &gt; 0</span>，源-衬底 PN 结被反偏，
+        耗尽层变宽。栅极要先把这层多出来的电荷填掉，才能形成反型层——
+        同样的栅压，沟道更薄，阈值更高。
+      </p>
+
+      <div class="formula">
+        <span class="v">V</span><span class="sub">TH</span> <span class="op">=</span>
+        <span class="v">V</span><span class="sub">TH0</span> <span class="op">+</span>
+        <span class="v">γ</span>( √(2<span class="v">φ</span><span class="sub">F</span>
+        <span class="op">+</span> <span class="v">V</span><span class="sub">SB</span>)
+        <span class="op">−</span> √(2<span class="v">φ</span><span class="sub">F</span>) )
+        <span class="note">V<sub>TH0</sub> 是 V<sub>SB</sub>=0 时的阈值，2φ<sub>F</sub> 是表面强反型所需的表面势，γ 是体效应系数。</span>
+      </div>
+
+      <div class="fig">
+        <svg id="f5" viewBox="0 0 560 330" role="img" aria-label="源极电位升高时耗尽层变宽"></svg>
+        <div class="fig-cap">同一只管子，源极电位抬高后源-衬底结反偏加深，耗尽层向衬底扩张，
+          阈值电压升高。图中虚线圈出的就是扩张的部分。</div>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section id="a6">
+      <div class="s-head"><span class="s-idx">06</span><h2>γ 有多大：一组实际数字</h2></div>
+
+      <p>
+        体效应系数 <span class="im">γ</span> 由工艺决定，和掺杂浓度成正比、和栅氧厚度成反比：
+      </p>
+
+      <div class="formula">
+        <span class="v">γ</span> <span class="op">=</span>
+        √(2<span class="v">q</span><span class="v">ε</span><span class="sub">si</span>
+        <span class="v">N</span><span class="sub">A</span>)
+        <span class="op">/</span>
+        <span class="v">C</span><span class="sub">ox</span>
+        <span class="note">q 是电子电荷，ε<sub>si</sub> 是硅介电常数，N<sub>A</sub> 是衬底掺杂，C<sub>ox</sub> 是单位面积栅氧电容。</span>
+      </div>
+
+      <p>
+        取一个 0.18 μm 级别的工艺：<span class="im">t<sub>ox</sub> = 4 nm</span>，
+        <span class="im">C<sub>ox</sub> = ε<sub>ox</sub>/t<sub>ox</sub> ≈ 0.86 μF/cm²</span>；
+        衬底掺杂 <span class="im">N<sub>A</sub> = 10<sup>17</sup> cm<sup>−3</sup></span>，
+        算得 <span class="im">2φ<sub>F</sub> ≈ 0.82 V</span>，
+        <span class="im">γ ≈ 0.21 V<sup>1/2</sup></span>，零偏阈值
+        <span class="im">V<sub>TH0</sub> = 0.45 V</span>。
+      </p>
+
+      <table class="tbl">
+        <thead>
+          <tr><th>V<sub>SB</sub> (V)</th><th>√(2φ<sub>F</sub>+V<sub>SB</sub>)</th><th>ΔV<sub>TH</sub> (mV)</th><th>V<sub>TH</sub> (V)</th><th>η = g<sub>mb</sub>/g<sub>m</sub></th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0</td><td>0.906</td><td>0</td><td>0.450</td><td>0.117</td></tr>
+          <tr><td>1</td><td>1.349</td><td>94</td><td>0.544</td><td>0.079</td></tr>
+          <tr><td>3</td><td>1.954</td><td>222</td><td>0.672</td><td>0.054</td></tr>
+          <tr><td>5</td><td>2.412</td><td>319</td><td>0.769</td><td>0.044</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        源极抬高 1 V，阈值就高了 94 mV，接近原来的 20%。同时管子多出一个体跨导
+        <span class="im">g<sub>mb</sub></span>，它和 <span class="im">g<sub>m</sub></span> 并联起作用：
+      </p>
+
+      <div class="formula">
+        <span class="v">g</span><span class="sub">mb</span> <span class="op">=</span>
+        <span class="v">γ</span><span class="v">g</span><span class="sub">m</span>
+        <span class="op">/</span> (2√(2<span class="v">φ</span><span class="sub">F</span>
+        <span class="op">+</span> <span class="v">V</span><span class="sub">SB</span>))
+        <span class="op">=</span>
+        <span class="v">η</span><span class="v">g</span><span class="sub">m</span>
+        <span class="note">η 一般在 0.05–0.2 之间，V<sub>SB</sub> 越大 η 越小——因为 √ 里那一项在变大。</span>
+      </div>
+
+      <div class="fig">
+        <svg id="f6" viewBox="0 0 520 300" role="img" aria-label="阈值电压随源衬电压的变化"></svg>
+        <div class="fig-cap">上表四个点的连续曲线。注意它不是线性的：V<sub>SB</sub> 越大，斜率越小。</div>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section id="a7">
+      <div class="s-head"><span class="s-idx">07</span><h2>三个后果</h2></div>
+
+      <div class="tip-grid">
+        <div class="tip">
+          <h4><span class="t-bad">源跟随器</span></h4>
+          <p>
+            源极是输出，体效应直接串进增益：
+            <span class="im">A<sub>v</sub> = g<sub>m</sub>/(g<sub>m</sub> + g<sub>mb</sub> + 1/r<sub>o</sub>) ≈ 1/(1+η)</span>。
+            η = 0.117 时只有 <b>0.895</b>。所以源跟随器的增益永远小于 1，
+            而且输出摆得越高，V<sub>SB</sub> 越大、η 越小，增益还会跟着变——这就是它的非线性来源。
+          </p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-bad">传输门 / 开关</span></h4>
+          <p>
+            导通电阻 <span class="im">R<sub>on</sub> = 1/[μ<sub>n</sub>C<sub>ox</sub>(W/L)(V<sub>GS</sub> − V<sub>TH</sub>)]</span>。
+            信号电平升高，源极电位跟着升高，V<sub>SB</sub> 变大、V<sub>TH</sub> 变大，
+            R<sub>on</sub> 随之变大。单管开关的电阻随信号变化，就是失真。
+            所以要用 NMOS 与 PMOS 并联的传输门——两者的体效应方向相反，R<sub>on</sub> 互相补偿。
+          </p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-bad">堆叠管 / cascode</span></h4>
+          <p>
+            越靠上的管子，源极电位越高，体效应越重。结果是需要更大的栅偏置才能维持同样的电流，
+            输出摆幅又被吃掉一截。设计 cascode 的偏置时，第二个管子的 V<sub>TH</sub>
+            必须按它的实际 V<sub>SB</sub> 算，不能直接套 0.45 V。
+          </p>
+        </div>
+        <div class="tip">
+          <h4><span class="t-good">对策</span></h4>
+          <p>
+            最直接的办法是让源极和衬底短接：给每只 NMOS 单独一个 P 阱（或者深 N 阱里的独立岛），
+            衬底接到自己的源极上。代价是面积和阱电容。再往上走是 SOI，
+            衬底完全隔离，体效应基本消失，但 wafer 贵、模型也复杂。
+          </p>
+        </div>
+      </div>
+
+      <div class="fig-2">
+        <div class="fig">
+          <svg id="f7a" viewBox="0 0 300 320" role="img" aria-label="源跟随器"></svg>
+          <div class="fig-cap">源跟随器：源极是输出，V<sub>SB</sub> ≠ 0</div>
+        </div>
+        <div class="fig">
+          <svg id="f7b" viewBox="0 0 300 320" role="img" aria-label="CMOS 传输门"></svg>
+          <div class="fig-cap">传输门：NMOS 与 PMOS 并联，R<sub>on</sub> 互补</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section id="a8">
+      <div class="s-head"><span class="s-idx">08</span><h2>小结：两个效应对照</h2></div>
+
+      <p>
+        两者都来自"不该有的那一端电压差"。密勒效应看的是电容两端的电压比，
+        背栅效应看的是源极和衬底的电位差。共同点是：<b>原理图上都看不见，但都必须在设计时算进去。</b>
+      </p>
+
+      <table class="tbl">
+        <thead>
+          <tr><th></th><th>密勒效应</th><th>背栅效应</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>触发条件</td><td>电容跨接在反相增益两端</td><td>源极与衬底电位不同，V<sub>SB</sub> &gt; 0</td></tr>
+          <tr><td>直接表现</td><td>输入电容 ×(1+A)</td><td>V<sub>TH</sub> 升高，多出 g<sub>mb</sub></td></tr>
+          <tr><td>对电路的影响</td><td>主极点左移，带宽下降</td><td>增益偏离 1、R<sub>on</sub> 非线性、摆幅损失</td></tr>
+          <tr><td>常见位置</td><td>共源级、共射级、任何一级反相放大</td><td>源跟随器、cascode、传输门、堆叠管</td></tr>
+          <tr><td>对策</td><td>cascode、中和电容、差分结构</td><td>源-衬底短接、独立阱、SOI</td></tr>
+        </tbody>
+      </table>
+
+      <div class="cheat">
+        <div class="cheat-row">
+          <span class="cheat-k">Miller</span>
+          <span class="cheat-v">C<sub>in</sub> = C(1 + A)</span>
+        </div>
+        <div class="cheat-row">
+          <span class="cheat-k">Body effect</span>
+          <span class="cheat-v">V<sub>TH</sub> = V<sub>TH0</sub> + γ(√(2φ<sub>F</sub>+V<sub>SB</sub>) − √(2φ<sub>F</sub>))</span>
+        </div>
+        <div class="cheat-row">
+          <span class="cheat-k">g<sub>mb</sub></span>
+          <span class="cheat-v">g<sub>mb</sub> = η·g<sub>m</sub> = γ·g<sub>m</sub> / (2√(2φ<sub>F</sub>+V<sub>SB</sub>))</span>
+        </div>
+        <div class="cheat-row">
+          <span class="cheat-k">GBW</span>
+          <span class="cheat-v">A<sub>v</sub>·f<sub>p</sub> ≈ 1 / (2π R<sub>s</sub> C<sub>gd</sub>)</span>
+        </div>
+      </div>
+
+      <div class="foot-nav">
+        <a href="../index.html">← 返回首页</a>
+        <a href="#" class="dim">下一章（待写）→</a>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var NS = 'http://www.w3.org/2000/svg';
+
+  function mk(tag, a, p){
+    var e = document.createElementNS(NS, tag);
+    if(a) for(var k in a) if(a[k] !== undefined && a[k] !== null) e.setAttribute(k, a[k]);
+    if(p) p.appendChild(e);
+    return e;
+  }
+  function line(g, x1, y1, x2, y2, cls){
+    return mk('line', {x1:x1, y1:y1, x2:x2, y2:y2, 'class':cls||'wire'}, g);
+  }
+  function path(g, d, cls){
+    return mk('path', {d:d, 'class':cls||'wire'}, g);
+  }
+  function txt(g, x, y, s, cls, anchor){
+    var t = mk('text', {x:x, y:y, 'class':cls||'dim'}, g);
+    if(anchor) t.setAttribute('text-anchor', anchor);
+    t.textContent = s;
+    return t;
+  }
+  function dot(g, x, y, r){
+    return mk('circle', {cx:x, cy:y, r:r||2.8, 'class':'nd'}, g);
+  }
+
+  /* ---------- 元件 ---------- */
+  function resV(g, x, yc, h){
+    h = h || 40;
+    mk('rect', {x:x-6.5, y:yc-h/2, width:13, height:h, rx:1.5, 'class':'sym'}, g);
+  }
+  function gnd(g, x, y){
+    line(g, x-11, y, x+11, y, 'sym');
+    line(g, x-7, y+5.5, x+7, y+5.5, 'sym');
+    line(g, x-3, y+11, x+3, y+11, 'sym');
+  }
+  /* 在两点之间画一个电容：两条极板垂直于连线 */
+  function capBetween(g, x1, y1, x2, y2, gap){
+    gap = gap || 5;
+    var dx = x2-x1, dy = y2-y1, L = Math.sqrt(dx*dx+dy*dy);
+    var ux = dx/L, uy = dy/L, px = -uy, py = ux;
+    var cx = (x1+x2)/2, cy = (y1+y2)/2;
+    var ax = cx - ux*gap, ay = cy - uy*gap;
+    var bx = cx + ux*gap, by = cy + uy*gap;
+    var h = 9;
+    line(g, ax-px*h, ay-py*h, ax+px*h, ay+py*h, 'sym');
+    line(g, bx-px*h, by-py*h, bx+px*h, by+py*h, 'sym');
+    line(g, x1, y1, ax, ay, 'wire');
+    line(g, bx, by, x2, y2, 'wire');
+  }
+  /* NMOS：栅极接入 (gx,gy)，漏 (dx,dy)，源 (dx,sy) */
+  function nmos(g, gx, gy, dx, dy, sy){
+    var ch = gx + 26, top = gy - 22, bot = gy + 22;
+    line(g, gx, gy, gx+14, gy, 'sym');
+    line(g, gx+14, top, gx+14, bot, 'sym');
+    line(g, ch, top, ch, gy-6, 'sym');
+    line(g, ch, gy-3, ch, gy+3, 'sym');
+    line(g, ch, gy+6, ch, bot, 'sym');
+    line(g, ch, gy-15, dx, gy-15, 'sym');
+    line(g, dx, gy-15, dx, dy, 'sym');
+    line(g, ch, gy+15, dx, gy+15, 'sym');
+    line(g, dx, gy+15, dx, sy, 'sym');
+    mk('path', {d:'M'+(ch+9)+','+(gy+15-4)+' L'+(ch+17)+','+(gy+15)+' L'+(ch+9)+','+(gy+15+4)+' Z',
+      fill:'#0C111D', stroke:'none'}, g);
+  }
+
+  /* ================= 图 1：共源级与两个寄生电容 ================= */
+  (function(){
+    var g = document.getElementById('f1'); if(!g) return;
+    var DX = 280, DY = 150, SY = 270, GX = 170, GY = 210;
+
+    // VDD 与 RD
+    line(g, DX, 50, DX, 90);
+    line(g, DX, 130, DX, DY);
+    resV(g, DX, 110);
+    txt(g, DX, 40, 'VDD', 'k', 'middle');
+    txt(g, DX+13, 114, 'RD', 'k');
+
+    // 管子
+    nmos(g, GX, GY, DX, DY, SY);
+    txt(g, DX+13, GY+40, 'M1', 'k');
+
+    // 源到地
+    line(g, DX, SY, DX, 330);
+    gnd(g, DX, 330);
+    dot(g, DX, DY); dot(g, DX, SY); dot(g, GX, GY);
+
+    // 输入
+    line(g, 90, GY, GX, GY);
+    dot(g, 90, GY);
+    txt(g, 78, GY+4, 'vi', 'k', 'end');
+
+    // Cgd：栅极向上绕一小段接到漏极（入口错开 7 px，避免与 Cgs 的竖线粘成一条）
+    path(g, 'M'+(GX+7)+','+GY+' V175 H'+DX);
+    capBetween(g, GX+7, 175, DX, 175);
+    txt(g, (GX+DX)/2+6, 157, 'Cgd = 5 fF', 'acc', 'middle');
+
+    // Cgs：栅极向下绕一小段接到源极
+    path(g, 'M'+GX+','+GY+' V245 H'+DX);
+    capBetween(g, GX, 245, DX, 245);
+    txt(g, (GX+DX)/2+6, 266, 'Cgs = 45 fF', 'acc', 'middle');
+
+    // 增益标注
+    txt(g, DX+22, 64, 'vo = −50 · vi', 'k', 'start');
+    txt(g, DX+22, 82, '|Av| = 50', 'dim', 'start');
+  })();
+
+  /* ================= 图 2：密勒等效 ================= */
+  (function(){
+    var g = document.getElementById('f2'); if(!g) return;
+
+    // ---- 左：跨接 ----
+    var inX = 60, outX = 250, y = 130;
+    line(g, inX, y, 112, y);
+    mk('rect', {x:112, y:y-32, width:78, height:64, rx:6, 'class':'sym'}, g);
+    txt(g, 151, y+5, '−A', 'k', 'middle');
+    line(g, 190, y, outX, y);
+    dot(g, inX, y); dot(g, outX, y);
+    txt(g, inX-10, y+4, 'v1', 'k', 'end');
+    txt(g, outX+8, y+4, 'v2', 'k', 'start');
+
+    path(g, 'M'+inX+','+y+' V74 H'+outX+' V'+y);
+    capBetween(g, inX, 74, outX, 74);
+    txt(g, (inX+outX)/2, 62, 'C', 'acc', 'middle');
+
+    txt(g, inX, 288, '跨接', 'k', 'start');
+
+    // ---- 右：等效 ----
+    var ix = 330, ox = 480;
+    line(g, ix, y, 372, y);
+    mk('rect', {x:372, y:y-32, width:78, height:64, rx:6, 'class':'sym'}, g);
+    txt(g, 411, y+5, '−A', 'k', 'middle');
+    line(g, 450, y, ox, y);
+    dot(g, ix, y); dot(g, ox, y);
+
+    line(g, ix, y, ix, 232);
+    capBetween(g, ix, y, ix, 232);
+    gnd(g, ix, 244);
+    txt(g, ix+12, 186, 'C(1+A)', 'acc', 'start');
+
+    line(g, ox, y, ox, 232);
+    capBetween(g, ox, y, ox, 232);
+    gnd(g, ox, 244);
+    txt(g, ox+12, 186, 'C(1+1/A)', 'acc', 'start');
+
+    txt(g, ix, 288, '等效', 'k', 'start');
+
+    // 箭头
+    mk('path', {d:'M262,130 l0,0', stroke:'none'}, g);
+    txt(g, 300, 124, '⇒', 'k', 'middle');
+  })();
+
+  /* ================= 图 3：幅频特性 ================= */
+  (function(){
+    var g = document.getElementById('f3'); if(!g) return;
+    var L = 74, R = 520, T = 46, B = 250;
+    var lx = function(f){ return L + (Math.log10(f)-3)/3*(R-L); };
+    var yv = function(d){ return B - d/40*(B-T); };
+
+    // 坐标轴
+    line(g, L, T-14, L, B, 'axis');
+    line(g, L, B, R+14, B, 'axis');
+
+    [3,4,5,6].forEach(function(e){
+      var f = Math.pow(10, e);
+      line(g, lx(f), B, lx(f), B+4, 'axis');
+      txt(g, lx(f), B+18, (e===3?'1k':e===4?'10k':e===5?'100k':'1M'), 'dim', 'middle');
+    });
+    [0,10,20,30,40].forEach(function(d){
+      line(g, L-4, yv(d), L, yv(d), 'axis');
+      txt(g, L-9, yv(d)+3, String(d), 'dim', 'end');
+    });
+    txt(g, L-9, T-22, 'dB', 'dim', 'end');
+    txt(g, R+16, B+4, 'f', 'dim', 'start');
+
+    function curve(fp){
+      var pts = [];
+      for(var e=3; e<=6.0001; e+=0.02){
+        var f = Math.pow(10, e);
+        var d = 34 - 20*Math.max(0, Math.log10(f/fp));
+        pts.push(lx(f).toFixed(1)+','+yv(Math.max(0,d)).toFixed(1));
+      }
+      return pts.join(' ');
+    }
+
+    mk('polyline', {points:curve(177000), 'class':'curve-ideal'}, g);
+    mk('polyline', {points:curve(26500), 'class':'curve-acc'}, g);
+
+    // −3 dB 竖线
+    [ [26500,'26.5 kHz','acc'], [177000,'177 kHz','ideal'] ].forEach(function(o){
+      line(g, lx(o[0]), yv(31), lx(o[0]), B, 'dash');
+      dot(g, lx(o[0]), yv(31), 3);
+      txt(g, lx(o[0]), B-9, o[1], o[2]==='acc'?'acc':'dim', 'middle');
+    });
+
+    txt(g, L+10, yv(34)+19, '34 dB', 'dim', 'start');
+    txt(g, lx(330000), yv(26), '−20 dB/dec', 'dim', 'start');
+  })();
+
+  /* ================= 图 4：共源共栅 ================= */
+  (function(){
+    var g = document.getElementById('f4'); if(!g) return;
+    var DX = 300;
+
+    // VDD + RD
+    line(g, DX, 44, DX, 70);
+    line(g, DX, 110, DX, 120);
+    resV(g, DX, 90);
+    txt(g, DX, 34, 'VDD', 'k', 'middle');
+    txt(g, DX+13, 94, 'RD', 'k');
+
+    // M2（上，共栅）
+    nmos(g, 240, 150, DX, 120, 180);
+    txt(g, DX+13, 154, 'M2', 'k');
+
+    // M1（下，输入管）
+    nmos(g, 240, 280, DX, 232, 320);
+    txt(g, DX+13, 284, 'M1', 'k');
+
+    // M2 源 → M1 漏
+    line(g, DX, 180, DX, 232);
+
+    // 源到地
+    line(g, DX, 320, DX, 348);
+    gnd(g, DX, 348);
+
+    // X 节点
+    dot(g, DX, 210, 3.2);
+    txt(g, DX+13, 214, 'X', 'k', 'start');
+
+    // 输入
+    line(g, 110, 280, 240, 280);
+    dot(g, 110, 280);
+    txt(g, 98, 284, 'vi', 'k', 'end');
+
+    // VB
+    line(g, 110, 150, 240, 150);
+    dot(g, 110, 150);
+    txt(g, 98, 154, 'VB', 'k', 'end');
+
+    // Cgd1：从 M1 栅极跨到 X
+    path(g, 'M240,280 V210 H'+DX);
+    capBetween(g, 240, 210, DX, 210);
+    txt(g, 248, 198, 'Cgd1', 'acc', 'start');
+  })();
+
+  /* ================= 图 5：剖面 ================= */
+  (function(){
+    var g = document.getElementById('f5'); if(!g) return;
+
+    function section(ox, wide, label, sub){
+      var gg = mk('g', {transform:'translate('+ox+',0)'}, g);
+
+      // 衬底
+      mk('rect', {x:0, y:96, width:240, height:150, fill:'#F7F8FB', stroke:'#E4E7EC'}, gg);
+      txt(gg, 120, 226, 'p-sub', 'dim', 'middle');
+
+      // 源漏 n+
+      mk('rect', {x:26, y:96, width:56, height:34, fill:'#DDE1F8', stroke:'#C7CEE8'}, gg);
+      mk('rect', {x:158, y:96, width:56, height:34, fill:'#DDE1F8', stroke:'#C7CEE8'}, gg);
+      txt(gg, 54, 122, 'n+', 'k', 'middle');
+      txt(gg, 186, 122, 'n+', 'k', 'middle');
+
+      // 栅氧 + 多晶硅
+      mk('rect', {x:82, y:88, width:76, height:8, fill:'#E9EAF3', stroke:'#C7CEE8'}, gg);
+      mk('rect', {x:86, y:66, width:68, height:22, fill:'#EDEFF5', stroke:'#C7CEE8'}, gg);
+      txt(gg, 120, 82, 'poly', 'dim', 'middle');
+
+      // 耗尽层边界
+      var depth = wide ? 62 : 26;
+      var d = 'M22,140 C60,'+(140+depth*0.7)+' 100,'+(140+depth)+' 120,'+(140+depth)
+            + ' C140,'+(140+depth)+' 180,'+(140+depth*0.7)+' 218,140';
+      path(gg, d, 'dep');
+
+      // 源极引线与电位
+      line(gg, 54, 96, 54, 56, 'wire');
+      txt(gg, 54, 48, label, 'acc', 'middle');
+      line(gg, 186, 96, 186, 56, 'wire');
+      txt(gg, 186, 48, 'VD', 'dim', 'middle');
+
+      // 衬底引线
+      line(gg, 120, 246, 120, 276, 'wire');
+      txt(gg, 120, 292, 'VB = 0', 'dim', 'middle');
+
+      txt(gg, 120, 322, sub, 'k', 'middle');
+    }
+
+    section(10, false, 'VS = 0', 'VSB = 0，耗尽层窄');
+    section(300, true, 'VS = 1 V', 'VSB > 0，耗尽层向衬底扩张');
+  })();
+
+  /* ================= 图 6：Vth–VSB ================= */
+  (function(){
+    var g = document.getElementById('f6'); if(!g) return;
+    var L = 78, R = 470, T = 48, B = 246;
+    var sx = function(v){ return L + v/5*(R-L); };
+    var sy = function(th){ return B - (th-0.40)/0.40*(B-T); };
+
+    line(g, L, T-14, L, B, 'axis');
+    line(g, L, B, R+14, B, 'axis');
+
+    [0,1,2,3,4,5].forEach(function(v){
+      line(g, sx(v), B, sx(v), B+4, 'axis');
+      txt(g, sx(v), B+18, String(v), 'dim', 'middle');
+    });
+    [0.4,0.5,0.6,0.7,0.8].forEach(function(t){
+      line(g, L-4, sy(t), L, sy(t), 'axis');
+      txt(g, L-9, sy(t)+3, t.toFixed(1), 'dim', 'end');
+    });
+    txt(g, L-9, T-22, 'VTH / V', 'dim', 'end');
+    txt(g, R+14, B+30, 'VSB / V', 'dim', 'end');
+
+    var pts = [];
+    for(var v=0; v<=5; v+=0.05){
+      pts.push(sx(v).toFixed(1)+','+sy(0.45+0.212*(Math.sqrt(0.82+v)-Math.sqrt(0.82))).toFixed(1));
+    }
+    mk('polyline', {points:pts.join(' '), 'class':'curve-acc'}, g);
+
+    [[0,'0.450'],[1,'0.544'],[3,'0.672'],[5,'0.769']].forEach(function(o, i){
+      var th = parseFloat(o[1]);
+      dot(g, sx(o[0]), sy(th), 3.4);
+      var last = (i === 3);
+      txt(g, sx(o[0]) + (last ? -10 : 9), sy(th) + (last ? -10 : 15), o[1] + ' V', 'k', last ? 'end' : 'start');
+    });
+  })();
+
+  /* ================= 图 7a：源跟随器 ================= */
+  (function(){
+    var g = document.getElementById('f7a'); if(!g) return;
+
+    line(g, 150, 40, 150, 110);
+    txt(g, 150, 32, 'VDD', 'k', 'middle');
+
+    nmos(g, 90, 150, 150, 110, 210);
+    txt(g, 163, 132, 'M1', 'k');
+
+    // 源 → 输出 → 电流源 → 地
+    line(g, 150, 210, 150, 250);
+    dot(g, 150, 250);
+    line(g, 150, 250, 220, 250);
+    txt(g, 228, 254, 'vo', 'k', 'start');
+
+    mk('rect', {x:132, y:250, width:36, height:34, rx:4, 'class':'sym'}, g);
+    txt(g, 150, 272, 'IB', 'dim', 'middle');
+    line(g, 150, 284, 150, 300);
+    gnd(g, 150, 300);
+
+    // 输入
+    line(g, 40, 150, 90, 150);
+    dot(g, 40, 150);
+    txt(g, 32, 154, 'vi', 'k', 'end');
+
+    // 标注
+    txt(g, 160, 232, 'VSB ≠ 0', 'warn', 'start');
+    txt(g, 30, 202, 'Av = 1/(1+η) ≈ 0.89', 'dim', 'start');
+  })();
+
+  /* ================= 图 7b：传输门 ================= */
+  (function(){
+    var g = document.getElementById('f7b'); if(!g) return;
+
+    // 两个器件
+    mk('rect', {x:100, y:104, width:96, height:44, rx:5, 'class':'sym'}, g);
+    txt(g, 148, 131, 'MN', 'k', 'middle');
+    mk('rect', {x:100, y:184, width:96, height:44, rx:5, 'class':'sym'}, g);
+    txt(g, 148, 211, 'MP', 'k', 'middle');
+
+    // 源漏并联
+    line(g, 68, 126, 68, 206);
+    line(g, 228, 126, 228, 206);
+    line(g, 100, 126, 68, 126);
+    line(g, 100, 206, 68, 206);
+    line(g, 196, 126, 228, 126);
+    line(g, 196, 206, 228, 206);
+
+    // 输入输出
+    line(g, 34, 166, 68, 166);
+    dot(g, 34, 166);
+    txt(g, 26, 170, 'in', 'k', 'end');
+    line(g, 228, 166, 262, 166);
+    dot(g, 262, 166);
+    txt(g, 270, 170, 'out', 'k', 'start');
+
+    // 栅极
+    line(g, 148, 104, 148, 74);
+    txt(g, 148, 66, 'C', 'acc', 'middle');
+    line(g, 148, 228, 148, 250);
+    txt(g, 148, 272, 'C', 'acc', 'middle');
+    line(g, 141, 257, 155, 257, 'sym');
+
+    txt(g, 100, 302, 'Ron 随电平变化', 'dim', 'start');
+    txt(g, 100, 320, '两者互补', 'dim', 'start');
+  })();
+
+})();
+
+</script>
+</body>
+</html>

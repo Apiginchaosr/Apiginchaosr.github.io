@@ -301,6 +301,7 @@
       <a href="index.html" class="on">首页</a>
       <a href="deep-learning/01-mlp.html">深度学习</a>
       <a href="signals/01-convolution.html">信号</a>
+      <a href="analog/01-miller-body.html">模拟</a>
       <a href="#about">关于</a>
     </nav>
     <a class="gh-btn" href="https://github.com/Apiginchaosr" target="_blank" rel="noopener">
@@ -311,11 +312,11 @@
 
   <section class="hero">
     <div>
-      <div class="badge"><b>NEW</b> 10 月 18 日 · 新增反向传播、卷积、傅里叶</div>
+      <div class="badge"><b>NEW</b> 10 月 18 日 · 新增密勒效应与背栅效应</div>
       <div class="kick"><i></i>SUSTech · 信息工程 · 2025 级</div>
       <h1>深度学习<br><em>笔记</em></h1>
       <p class="lede">
-        深度学习与信号与系统的学习笔记。每章从概念讲到公式，配可以拖的图。
+        深度学习、信号与系统、模拟集成电路的笔记。每章从概念讲到公式。
       </p>
       <div class="actions">
         <a class="btn" href="deep-learning/01-mlp.html">从第 1 章读起 <span class="arrow">→</span></a>
@@ -332,6 +333,11 @@
         <div class="dot-row"><i></i><i></i><i></i></div>
       </div>
 
+      <a class="rc-row" href="analog/01-miller-body.html">
+        <span class="rc-id">A1</span>
+        <span class="rc-body"><b>密勒效应与背栅效应</b><i>寄生参数怎么改写电路</i></span>
+        <span class="rc-arrow">→</span>
+      </a>
       <a class="rc-row" href="deep-learning/03-backprop.html">
         <span class="rc-id">03</span>
         <span class="rc-body"><b>反向传播</b><i>δ 怎么一层层退回去</i></span>
@@ -349,7 +355,7 @@
       </a>
 
       <div class="hc-foot">
-        <span>深度学习 3 篇 · 信号 2 篇</span>
+        <span>深度学习 3 · 信号 2 · 模拟 1</span>
         <span>纯静态 · 无框架</span>
       </div>
     </div>
@@ -448,6 +454,25 @@
   </div>
 
 
+  <div class="track-h" style="margin-top:34px">
+    <span class="th-k"><i>03</i>模拟集成电路</span>
+    <span class="th-s">精粹 · 一章讲透一个效应</span>
+  </div>
+
+  <div class="cards">
+    <a class="ch live" href="analog/01-miller-body.html">
+      <span class="status">已上线</span>
+      <span class="no">01</span>
+      <h3>密勒效应与背栅效应</h3>
+      <p>一个 5 fF 的电容怎么把带宽拉到六分之一，源极不接地时阈值又怎么跟着漂。含推导、数值和四种对策。</p>
+      <div class="tags">
+        <span class="tag">Miller</span>
+        <span class="tag">Cascode</span>
+        <span class="tag">Body Effect</span>
+      </div>
+    </a>
+  </div>
+
   <div class="sec-head" style="margin-top:clamp(40px,5.5vw,64px)">
     <div>
       <h2>这个站是怎么做的</h2>
@@ -458,7 +483,7 @@
     <div class="focus">
       <div class="ico">◎</div>
       <h4>图都能拖</h4>
-      <p>每一节的演示都是手写的 Canvas，不是截图也不是动图。滑块拖到哪，图就画到哪。</p>
+      <p>演示都是手写的 Canvas 或 SVG，不是截图。矢量图放大到多少倍都不糊，打印也清楚。</p>
     </div>
     <div class="focus">
       <div class="ico">∑</div>
@@ -493,7 +518,7 @@
   </div>
 
   <footer>
-    <span>© 2026 Apiginchaosr · 手写 HTML / Canvas</span>
+    <span>© 2026 Apiginchaosr · 手写 HTML / Canvas / SVG</span>
     <span><a href="https://github.com/Apiginchaosr" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/Apiginchaosr?tab=repositories" target="_blank" rel="noopener">Repositories</a></span>
   </footer>
 </div>

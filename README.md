@@ -12,6 +12,7 @@
 | `deep-learning/03-backprop.html` | 第 03 章：反向传播，含 8 个可交互小节 |
 | `signals/01-convolution.html` | 信号与系统 01：卷积，含 4 个可交互小节 |
 | `signals/02-fourier.html` | 信号与系统 02：傅里叶变换，含 3 个可交互小节 |
+| `analog/01-miller-body.html` | 模拟集成电路 01：密勒效应与背栅效应，8 节，静态电路图 |
 
 ## 参考
 
@@ -33,11 +34,15 @@ B 站系列合集：<https://space.bilibili.com/88461692/channel/seriesdetail?si
 | 那么……什么是卷积？ | [BV1Vd4y1e7pj](https://www.bilibili.com/video/BV1Vd4y1e7pj/) | 卷积 |
 | 形象展示傅里叶变换 | [BV1pW411J7s8](https://www.bilibili.com/video/BV1pW411J7s8/) | 傅里叶变换 |
 
+模拟集成电路部分没有对应的视频，内容来自教材（Razavi《模拟 CMOS 集成电路设计》、Sedra/Smith《微电子电路》）的经典结论，数值按 0.18 μm 工艺自行代入核算。
+
 站点不是原片的文字搬运：原片建立直觉的部分直接沿用，每一处数学都补上了能在浏览器里动手操作的版本。系列之外会继续写 CNN 与注意力机制。
 
 ## 技术
 
-纯手写 HTML + CSS + Canvas，无框架、无构建、零外部依赖，可直接离线打开。
+纯手写 HTML + CSS + Canvas + SVG，无框架、无构建、零外部依赖，可直接离线打开。
+
+电路图不是截图也不是位图，是运行时用 JS 生成的 SVG：电阻、电容、MOS、地符号各自是一个函数，连线独立画，坐标手算对齐。所以放大、改主题、打印都不会糊。
 
 页面里的手写数字不是图片，是运行时用 Canvas 渲染字体、取墨迹包围盒、缩放到 20×20 内框居中，再做面积平均下采样得到的 28×28 灰度矩阵（复刻 MNIST 预处理）。
 
