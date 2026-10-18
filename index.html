@@ -130,6 +130,32 @@
   .link-more:hover{text-decoration:underline}
 
   .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+
+  /* 参考来源条 */
+  .tag.ep{
+    background:#fff;border:1px solid #DDE1FB;color:var(--indigo);
+    font-family:var(--mono);font-size:10px;letter-spacing:.02em;
+  }
+  .cards-note{font-size:12px;color:var(--muted);margin-top:12px;padding-left:2px;line-height:1.7}
+  .srcbar{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    margin-top:14px;padding:13px 18px;border-radius:14px;
+    background:#fff;border:1px solid var(--line);box-shadow:var(--shadow-sm);
+  }
+  .srcbar .k{
+    font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
+    color:var(--indigo);background:var(--indigo-soft);padding:3px 9px;border-radius:100px;
+  }
+  .srcbar .b{flex:1 1 380px;min-width:0}
+  .srcbar .b b{font-size:13px;font-weight:650;color:var(--ink);letter-spacing:-.01em}
+  .srcbar .eps{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.6}
+  .srcbar .eps i{font-style:normal;color:var(--line-2)}
+  .srcbar .go{
+    font-size:12.5px;font-weight:500;color:var(--indigo);text-decoration:none;white-space:nowrap;
+    padding:6px 12px;border-radius:100px;border:1px solid transparent;transition:.2s;
+  }
+  .srcbar .go:hover{background:var(--indigo-soft);border-color:#DFE2FB}
+  @media (max-width:560px){.srcbar{padding:12px 14px;gap:10px}.srcbar .go{margin-left:auto}}
   .ch{
     display:block;text-decoration:none;color:inherit;background:var(--card);
     border:1px solid var(--line);border-radius:18px;padding:22px;
@@ -318,7 +344,7 @@
   <div class="sec-head" id="notes">
     <div>
       <h2>学习轨迹</h2>
-      <p>从最小的网络开始，把每一步都走一遍。</p>
+      <p>从最小的网络开始，把每一步都走一遍。脉络跟着 3Blue1Brown 的《深度学习》系列走。</p>
     </div>
     <a class="link-more" href="deep-learning/01-mlp.html">查看全部 →</a>
   </div>
@@ -330,10 +356,10 @@
       <h3>MLP 识别手写数字</h3>
       <p>从一张 28×28 的灰度图出发，走完展平、加权求和、激活、堆叠直至 softmax 与反向传播的整条链路。</p>
       <div class="tags">
+        <span class="tag ep">3B1B Ep.1</span>
         <span class="tag">MLP</span>
         <span class="tag">Forward</span>
         <span class="tag">Softmax</span>
-        <span class="tag">Backprop</span>
       </div>
     </a>
     <a class="ch live" href="deep-learning/02-gradient-descent.html">
@@ -342,6 +368,7 @@
       <h3>梯度下降</h3>
       <p>从导数、梯度讲到学习率与 SGD，用可以真正跑起来的下降动画，看小球怎么一步步滑向谷底——以及为什么会飞出去。</p>
       <div class="tags">
+        <span class="tag ep">3B1B Ep.2</span>
         <span class="tag">Gradient</span>
         <span class="tag">Learning Rate</span>
         <span class="tag">SGD</span>
@@ -350,17 +377,33 @@
     <a class="ch off" href="#">
       <span class="status">计划中</span>
       <span class="no">03</span>
-      <h3>卷积神经网络</h3>
-      <p>为什么图像不该被展平、卷积核到底在找什么、感受野是怎么一步步长大的。</p>
-      <div class="tags"><span class="tag">CNN</span><span class="tag">Kernel</span></div>
+      <h3>反向传播</h3>
+      <p>梯度到底是怎么一层层退回去的：为什么说它在做「责任分配」，以及链式法则怎么写成一串矩阵乘法。</p>
+      <div class="tags"><span class="tag ep">3B1B Ep.3–4</span><span class="tag">Chain Rule</span><span class="tag">Gradient</span></div>
     </a>
     <a class="ch off" href="#">
       <span class="status">计划中</span>
       <span class="no">04</span>
-      <h3>注意力与 Transformer</h3>
-      <p>Q、K、V 的几何直觉，以及一句话内部的信息究竟是怎么流动的。</p>
-      <div class="tags"><span class="tag">Attention</span><span class="tag">Transformer</span></div>
+      <h3>卷积神经网络</h3>
+      <p>为什么图像不该被展平、卷积核到底在找什么、感受野是怎么一步步长大的。</p>
+      <div class="tags"><span class="tag">CNN</span><span class="tag">Kernel</span></div>
     </a>
+  </div>
+
+  <p class="cards-note">第 3–4 集之后，这个系列就结束了；再往后会继续写卷积网络与注意力机制。</p>
+
+  <div class="srcbar">
+    <span class="k">参考</span>
+    <span class="b">
+      <b>3Blue1Brown《深度学习》系列</b>
+      <span class="eps">
+        第 1 集 但什么是神经网络 <i>·</i>
+        第 2 集 梯度下降，神经网络如何学习 <i>·</i>
+        第 3 集 反向传播到底在做什么 <i>·</i>
+        第 4 集 反向传播的微积分
+      </span>
+    </span>
+    <a class="go" href="https://www.3blue1brown.com/topics/neural-networks" target="_blank" rel="noopener">看原片 ↗</a>
   </div>
 
   <div class="sec-head" style="margin-top:clamp(40px,5.5vw,64px)">

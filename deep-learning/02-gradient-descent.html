@@ -112,6 +112,21 @@
     font-size:10.5px;padding:4px 10px;border-radius:100px;
     background:var(--indigo-soft);color:var(--indigo-2);font-weight:500;
   }
+  /* 参考来源 */
+  .src{
+    display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-top:18px;padding:8px 16px 8px 8px;border-radius:100px;
+    border:1px solid var(--line);background:#fff;text-decoration:none;
+    font-size:12.5px;line-height:1.4;color:var(--body);
+    transition:border-color .2s,box-shadow .2s,background .2s;
+  }
+  .src:hover{border-color:#C7CDFB;background:#FDFDFF;box-shadow:0 6px 16px -8px rgba(79,70,229,.4)}
+  .src .src-k{
+    font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);
+    background:var(--indigo-soft);padding:3px 8px;border-radius:100px;font-weight:600;
+  }
+  .src .src-t b{color:var(--ink);font-weight:600}
+  .src .src-a{color:var(--indigo);font-weight:500;white-space:nowrap}
 
   /* 章节 */
   section{scroll-margin-top:84px;padding:clamp(34px,5vw,52px) 0;border-top:1px solid var(--line)}
@@ -385,6 +400,13 @@
         <span class="tag">SGD · Mini-batch</span>
         <span class="tag">Convergence</span>
       </div>
+
+      <a class="src" href="https://www.3blue1brown.com/lessons/gradient-descent" target="_blank" rel="noopener">
+        <span class="src-k">参考</span>
+        <span class="src-t">3Blue1Brown《深度学习》第 2 集 · <b>梯度下降，神经网络如何学习</b></span>
+        <span class="src-a">看原片 ↗</span>
+      </a>
+      
     </div>
 
     <!-- ============ 01 ============ -->
@@ -729,7 +751,7 @@
 
       <div class="foot-nav">
         <a href="01-mlp.html">← 上一章：MLP 识别手写数字</a>
-        <a href="#" class="dim">下一章：CNN（待更新）→</a>
+        <a href="#" class="dim">下一章：反向传播（3B1B 第 3–4 集）→</a>
       </div>
     </section>
   </main>
